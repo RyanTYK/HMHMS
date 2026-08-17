@@ -1,0 +1,144 @@
+# HMHMS - Host Machine Health Monitoring System
+# Full stack: MariaDB + API + check worker + web UI
+#
+#   Start:  docker compose up -d --build      (or just run start.bat)
+#   Stop:   docker compose down               (or run stop.bat)
+#   Logs:   docker compose logs -f
+#
+# Only ONE port is published to the host: HTTP_PORT (default 8080). The
+# database and the API talk to each other over the private "hmhms" network.
+
+name: hmhms
+
+services:
+  ##########################################################################
+  # Database
+  ##########################################################################
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-hmhms_root}
+      MARIADB_DATABASE:      ${DB_NAME:-hmhms_db}
+      MARIADB_USER:          ${DB_USER:-hmhms}
+      MARIADB_PASSWORD:      ${DB_PASS:-hmhms_pass}
+      TZ:                    ${TZ:-Asia/Kuala_Lumpur}
+    volumes:
+      - db_data:/var/lib/mysql
+      # Runs ONLY when db_data is empty (i.e. the very first start).
+      - ./backend/mysql-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      # Gate the app containers on the server actually accepting connections,
+      # which is what caused the ECONNREFUSED failures with the old .bat setup.
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [hmhms]
+
+  ##########################################################################
+  # REST API + SSE
+  ##########################################################################
+  backend:
+    build:
+      context: ./backend
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+    image: hmhms-backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &backend_env
+      NODE_ENV: production
+      TZ: ${TZ:-Asia/Kuala_Lumpur}
+
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-hmhms_db}
+      DB_USER: ${DB_USER:-hmhms}
+      DB_PASS: ${DB_PASS:-hmhms_pass}
+      # Schema is created by mysql-schema.sql; never let TypeORM alter it.
+      DB_SYNC: "false"
+
+      PORT: "3001"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      # The browser always talks to nginx, so the only valid origin is the
+      # published UI address.
+      CORS_ORIGIN:  ${PUBLIC_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${PUBLIC_URL:-http://localhost:8080}
+      FRONTEND_URL: ${PUBLIC_URL:-http://localhost:8080}
+
+      # Worker tuning
+      CHECK_INTERVAL_MS:        ${CHECK_INTERVAL_MS:-5000}
+      MAX_CONCURRENT_CHECKS:    ${MAX_CONCURRENT_CHECKS:-60}
+      MAX_RETRY_BUDGET_SECONDS: ${MAX_RETRY_BUDGET_SECONDS:-}
+      LOG_RETENTION_DAYS:       ${LOG_RETENTION_DAYS:-7}
+      DEFAULT_TIMEOUT_MS:       ${DEFAULT_TIMEOUT_MS:-5000}
+      DEFAULT_INTERVAL_SECONDS: ${DEFAULT_INTERVAL_SECONDS:-60}
+
+      # Email
+      SMTP_HOST:   ${SMTP_HOST:-}
+      SMTP_PORT:   ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER:   ${SMTP_USER:-}
+      SMTP_PASS:   ${SMTP_PASS:-}
+      SMTP_FROM:   ${SMTP_FROM:-}
+
+      # Microsoft OAuth (optional)
+      MICROSOFT_CLIENT_ID:     ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+      MICROSOFT_TENANT_ID:     ${MICROSOFT_TENANT_ID:-}
+      MICROSOFT_CALLBACK_URL:  ${MICROSOFT_CALLBACK_URL:-http://localhost:8080/api/auth/microsoft/callback}
+    networks: [hmhms]
+
+  ##########################################################################
+  # Background check worker (same image, different entrypoint)
+  ##########################################################################
+  worker:
+    build:
+      context: ./backend
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+    image: hmhms-backend:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    environment: *backend_env
+    # Monitors of type "ping" send ICMP. Most kernels allow unprivileged ping
+    # sockets, but NET_RAW guarantees it across Docker Desktop / WSL2 setups.
+    cap_add:
+      - NET_RAW
+    command: ["node", "dist/workers/checkWorker.js"]
+    # The image healthcheck curls /health, which the worker does not serve.
+    healthcheck:
+      disable: true
+    networks: [hmhms]
+
+  ##########################################################################
+  # Web UI (nginx: static assets + /api reverse proxy)
+  ##########################################################################
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+    image: hmhms-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    networks: [hmhms]
+
+networks:
+  hmhms:
+    driver: bridge
+
+volumes:
+  db_data:
