@@ -14,13 +14,13 @@
 <script setup lang="ts">
 import { toasts, removeToast } from '../composables/useToast';
 
-const typeClass = (type: string) => {
+const typeClass = (type?: string) => {
   if (type === 'success') return 'bg-green-600';
   if (type === 'error') return 'bg-red-600';
   return 'bg-gray-800';
 };
 
-const remove = (id: string | number) => removeToast(id);
+const remove = (id: number) => removeToast(id);
 </script>
 
 <style scoped>

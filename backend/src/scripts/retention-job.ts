@@ -20,13 +20,14 @@
  *   CLEANUP_BATCH_SIZE - Batch size for deletions (default: 1000)
  */
 
+import * as dotenv from 'dotenv';
+
+// Load environment variables FIRST before importing any modules that use them
+dotenv.config();
+
 import { AppDataSource } from '../utils/data-source';
 import { cleanupOldLogs } from './cleanup-logs';
 import { LockManager } from '../utils/lockManager';
-import * as dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 class RetentionJobScheduler {
   private isRunning = false;

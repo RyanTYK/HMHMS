@@ -1,3 +1,8 @@
+import * as dotenv from 'dotenv';
+
+// Load environment variables FIRST before importing any modules that use them
+dotenv.config();
+
 import { AppDataSource } from '../utils/data-source';
 import { sseManager } from '../utils/sseManager';
 import { Monitor } from '../models/Monitor';
@@ -5,10 +10,6 @@ import { runCheck } from '../services/checkEngine';
 import { cleanOldLogs } from '../controllers/monitorController';
 import { LockManager } from '../utils/lockManager';
 import { Brackets } from 'typeorm';
-import * as dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 const MAX_CONCURRENT_CHECKS = parseInt(process.env.MAX_CONCURRENT_CHECKS || '40');
 // How often to poll the DB for due monitors. It's okay to poll more slowly

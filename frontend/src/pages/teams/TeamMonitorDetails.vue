@@ -223,7 +223,19 @@ const teamsStore = useTeamsStore();
 const teamId = computed(() => parseInt(route.params.teamId as string));
 const monitorId = computed(() => route.params.monitorId as string);
 
-const monitor = ref({
+interface TeamMonitorDetail {
+  id: string;
+  name: string;
+  type: string;
+  target: string;
+  status: string;
+  lastChecked: string;
+  interval_seconds: number;
+  active: boolean;
+  is_paused?: boolean;
+}
+
+const monitor = ref<TeamMonitorDetail>({
   id: monitorId.value,
   name: '',
   type: '',
@@ -232,6 +244,7 @@ const monitor = ref({
   lastChecked: '',
   interval_seconds: 60,
   active: true,
+  is_paused: false,
 });
 
 const team = computed(() => teamsStore.teams.find(t => t.id === teamId.value));
@@ -380,7 +393,7 @@ async function fetchMonitorDetail() {
     currentTime.value = new Date();
     // Now that loading is false, the canvas should be in the DOM
     // Only render chart if monitor is active and not paused
-    if (monitor.value && monitor.value.active && !(monitor.value as any).is_paused) {
+    if (monitor.value && monitor.value.active && !monitor.value.is_paused) {
       renderChart();
     }
   }
@@ -392,7 +405,7 @@ function renderChart() {
   console.log('chartLabels:', chartLabels.value);
   
   // Don't render chart if monitor is not active or is paused
-  if (!monitor.value || !monitor.value.active || (monitor.value as any).is_paused) {
+  if (!monitor.value || !monitor.value.active || monitor.value.is_paused) {
     console.log('Monitor is not active or is paused, skipping chart render');
     if (chartInstance) {
       chartInstance.destroy();
@@ -632,7 +645,7 @@ function startCountdownTimer() {
     currentTime.value = now;
     
     // Skip auto-refresh logic if monitor is disabled or paused
-    if (!monitor.value.active || (monitor.value as any).is_paused) {
+    if (!monitor.value.active || monitor.value.is_paused) {
       return;
     }
     
@@ -696,7 +709,7 @@ onMounted(async () => {
         // If our specific monitor has updated, refresh the data immediately
         if (data.monitorId === Number(monitorId.value) || data.monitorId === monitorId.value) {
           // Skip refresh if monitor is disabled or paused
-          if (!monitor.value.active || (monitor.value as any).is_paused) {
+          if (!monitor.value.active || monitor.value.is_paused) {
             console.log('SSE: Monitor is disabled/paused, skipping refresh');
             return;
           }
