@@ -59,21 +59,42 @@
             <p class="text-red-400 font-normal text-sm">{{ error }}</p>
           </div>
           
-          <p class="text-white/70 mb-10 px-4 text-sm leading-relaxed">
-            The verification link may have expired or is invalid. Please try registering again.
+          <p class="text-white/70 mb-6 px-4 text-sm leading-relaxed">
+            The verification link may have expired or is invalid. Enter your email below to get a new link.
           </p>
-          
-          <div class="flex gap-3 justify-center px-4" style="margin-top: 40px;">
-            <router-link 
-              to="/register" 
+
+          <div class="px-4 mb-6">
+            <input
+              v-model="resendEmail"
+              type="email"
+              placeholder="you@example.com"
+              class="w-full rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 px-4 py-2.5 focus:outline-none focus:border-pink-500"
+            />
+            <button
+              @click="resendVerification"
+              :disabled="resendCooldown > 0 || isResending || !resendEmail"
+              class="mt-3 w-full rounded-lg font-medium transition-colors duration-200 py-2.5"
+              :class="resendCooldown > 0 || isResending || !resendEmail ? 'bg-white/10 text-white/50' : 'bg-pink-500 hover:bg-[#b8117b] text-white'"
+            >
+              <span v-if="isResending">Sending…</span>
+              <span v-else-if="resendCooldown > 0">Resend in {{ resendCooldown }}s</span>
+              <span v-else>Resend Verification Email</span>
+            </button>
+            <p v-if="resendMessage" class="text-green-400 text-sm mt-3">{{ resendMessage }}</p>
+            <p v-if="resendError" class="text-red-400 text-sm mt-3">{{ resendError }}</p>
+          </div>
+
+          <div class="flex gap-3 justify-center px-4" style="margin-top: 24px;">
+            <router-link
+              to="/register"
               class="inline-block bg-pink-500 hover:bg-[#b8117b] text-white font-medium rounded-lg transition-colors duration-200"
               style="padding: 12px 24px;"
             >
               Back to Register
             </router-link>
-            
-            <router-link 
-              to="/login" 
+
+            <router-link
+              to="/login"
               class="inline-block bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-colors duration-200 border border-white/20"
               style="padding: 12px 24px;"
             >
@@ -96,6 +117,55 @@ const route = useRoute();
 const loading = ref(true);
 const success = ref(false);
 const error = ref('');
+
+const resendEmail = ref('');
+const isResending = ref(false);
+const resendCooldown = ref(0);
+const resendMessage = ref('');
+const resendError = ref('');
+let cooldownTimer: number | null = null;
+
+function startResendCooldown() {
+  resendCooldown.value = 90; // 90 seconds cooldown
+
+  if (cooldownTimer) {
+    clearInterval(cooldownTimer);
+  }
+
+  cooldownTimer = setInterval(() => {
+    resendCooldown.value--;
+    if (resendCooldown.value <= 0) {
+      if (cooldownTimer) clearInterval(cooldownTimer);
+    }
+  }, 1000);
+}
+
+async function resendVerification() {
+  if (resendCooldown.value > 0 || isResending.value || !resendEmail.value) return;
+
+  isResending.value = true;
+  resendMessage.value = '';
+  resendError.value = '';
+
+  try {
+    const API_URL = import.meta.env.VITE_API_URL ?? '';
+    const res = await fetch(`${API_URL}/api/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resendEmail.value })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to resend verification email');
+
+    resendMessage.value = data.message || 'Verification email sent. Please check your inbox.';
+    startResendCooldown();
+  } catch (e: any) {
+    resendError.value = e?.message || 'Failed to resend verification email';
+  } finally {
+    isResending.value = false;
+  }
+}
 
 onMounted(async () => {
   const token = route.query.token;
