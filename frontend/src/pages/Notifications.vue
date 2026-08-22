@@ -6,7 +6,7 @@
         <div class="flex items-center justify-between mb-6">
           <div>
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Notifications</h1>
-            <p class="text-gray-600">Stay updated with monitor shares, team invites, and alerts</p>
+            <p class="text-gray-600">Stay updated with monitor alerts</p>
           </div>
           <button
             v-if="unreadNotifications.length > 0"
@@ -57,107 +57,8 @@
           ]"
           :style="!notification.is_read ? 'border-color: #f0b8dc;' : ''"
         >
-          <!-- Team Invite Notification -->
-          <div v-if="notification.type === 'invite' && notification.related_team_id" class="p-4">
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fae7f3;">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#cc1389" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ notification.title }}</h3>
-                  <p class="text-gray-600 text-sm">{{ notification.message }}</p>
-                  <span class="text-xs text-gray-500 mt-2 inline-block">{{ formatDate(notification.created_at) }}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <button
-                  @click="acceptTeamInvite(notification)"
-                  :disabled="processingId === notification.id"
-                  class="px-6 py-2 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg disabled:opacity-50"
-                  style="background-color: #cc1389;"
-                  @mouseenter="($event.target as HTMLElement).style.backgroundColor = '#b8117b'"
-                  @mouseleave="($event.target as HTMLElement).style.backgroundColor = '#cc1389'"
-                >
-                  {{ processingId === notification.id ? 'Accepting...' : 'Accept Invite' }}
-                </button>
-                <button
-                  @click="declineTeamInvite(notification)"
-                  :disabled="processingId === notification.id"
-                  class="px-6 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-lg font-medium transition-all disabled:opacity-50"
-                >
-                  Decline
-                </button>
-                <button
-                  @click="deleteNotification(notification.id)"
-                  class="text-gray-400 hover:text-red-600"
-                  title="Delete"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Share Notification -->
-          <div v-else-if="notification.type === 'share'" class="p-4">
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fae7f3;">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#cc1389" stroke-width="2">
-                    <circle cx="18" cy="5" r="3"></circle>
-                    <circle cx="6" cy="12" r="3"></circle>
-                    <circle cx="18" cy="19" r="3"></circle>
-                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                  </svg>
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ notification.title }}</h3>
-                  <p class="text-gray-600 text-sm">{{ notification.message }}</p>
-                  <span class="text-xs text-gray-500 mt-2 inline-block">{{ formatDate(notification.created_at) }}</span>
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <button
-                  @click="viewSharesAndDismiss(notification.id)"
-                  class="px-6 py-2 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg"
-                  style="background-color: #cc1389;"
-                  @mouseenter="($event.target as HTMLElement).style.backgroundColor = '#b8117b'"
-                  @mouseleave="($event.target as HTMLElement).style.backgroundColor = '#cc1389'"
-                >
-                  View Shares
-                </button>
-                <button
-                  @click="dismissNotification(notification.id)"
-                  class="px-6 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-lg font-medium transition-all"
-                >
-                  Dismiss
-                </button>
-                <button
-                  @click="deleteNotification(notification.id)"
-                  class="text-gray-400 hover:text-red-600"
-                  title="Delete"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
           <!-- Alert/System Notification -->
-          <div v-else class="p-4">
+          <div class="p-4">
             <div class="flex items-start justify-between">
               <div class="flex items-start gap-4">
                 <div
@@ -232,22 +133,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useNotificationsStore, NotificationType } from '../stores/notifications';
-import { useTeamsStore } from '../stores/teams';
+import { useNotificationsStore } from '../stores/notifications';
 
-const router = useRouter();
 const notificationsStore = useNotificationsStore();
-const teamsStore = useTeamsStore();
 
 const activeTab = ref('all');
-const processingId = ref<number | null>(null);
 const loading = ref(false);
 
 const tabs = computed(() => [
   { label: 'All', value: 'all', count: notificationsStore.notifications.length },
-  { label: 'Shares', value: 'share', count: notificationsStore.shareNotifications.length },
-  { label: 'Invites', value: 'invite', count: notificationsStore.inviteNotifications.length },
   { label: 'Alerts', value: 'alert', count: notificationsStore.alertNotifications.length },
 ]);
 
@@ -294,20 +188,7 @@ const markAllAsRead = async () => {
 
 const clearAllNotifications = async () => {
   try {
-    // Only clear read notifications and non-actionable items
-    // Don't clear pending invites or pending shares
-    const notificationIds = notificationsStore.notifications
-      .filter(n => {
-        // Keep pending invites (they require action)
-        if (n.type === 'invite' && n.related_team_id) return false;
-        // Keep unread share notifications (user may want to view them)
-        if (n.type === 'share' && !n.is_read) return false;
-        // Clear everything else (alerts, read shares, etc)
-        return true;
-      })
-      .map(n => n.id);
-    
-    // Delete filtered notifications
+    const notificationIds = notificationsStore.notifications.map(n => n.id);
     await Promise.all(notificationIds.map(id => notificationsStore.deleteNotification(id)));
   } catch (error) {
     console.error('Failed to clear all notifications:', error);
@@ -319,72 +200,6 @@ const deleteNotification = async (notificationId: number) => {
     await notificationsStore.deleteNotification(notificationId);
   } catch (error) {
     console.error('Failed to delete notification:', error);
-  }
-};
-
-const dismissNotification = async (notificationId: number) => {
-  try {
-    await notificationsStore.deleteNotification(notificationId);
-  } catch (error) {
-    console.error('Failed to dismiss notification:', error);
-  }
-};
-
-const viewSharesAndDismiss = async (notificationId: number) => {
-  try {
-    // Delete the notification first
-    await notificationsStore.deleteNotification(notificationId);
-    // Then navigate to shares page with shared-with-me tab
-    router.push('/shared?tab=shared-with-me');
-  } catch (error) {
-    console.error('Failed to process notification:', error);
-    // Still navigate even if delete fails
-    router.push('/shared?tab=shared-with-me');
-  }
-};
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const acceptTeamInvite = async (notification: any) => {
-  if (!notification.related_team_id) return;
-
-  processingId.value = notification.id;
-  try {
-    // Call backend to accept invite
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/api/teams/${notification.related_team_id}/accept-invite`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const result = await response.json();
-    if (!result.success) throw new Error(result.error || 'Failed to accept invite');
-
-    // Mark as read and delete notification
-    await notificationsStore.markAsRead(notification.id);
-    await notificationsStore.deleteNotification(notification.id);
-
-    // Refresh teams list
-    await teamsStore.fetchTeams();
-  } catch (error) {
-    console.error('Failed to accept invite:', error);
-  } finally {
-    processingId.value = null;
-  }
-};
-
-const declineTeamInvite = async (notification: any) => {
-  processingId.value = notification.id;
-  try {
-    // TODO: Implement decline team invite API call
-    console.log('Decline team invite:', notification.related_team_id);
-    
-    // For now, just delete the notification
-    await notificationsStore.deleteNotification(notification.id);
-  } catch (error) {
-    console.error('Failed to decline invite:', error);
-  } finally {
-    processingId.value = null;
   }
 };
 

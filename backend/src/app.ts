@@ -11,8 +11,6 @@ import { AppDataSource } from './utils/data-source';
 import { sseManager } from './utils/sseManager';
 import monitorRoutes from './routes/monitorRoutes';
 import authRoutes from './routes/authRoutes';
-import teamRoutes from './routes/teamRoutes';
-import shareRoutes from './routes/shareRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import bulkImportRoutes from './routes/bulkImportRoutes';
 import jwt from 'jsonwebtoken';
@@ -70,8 +68,6 @@ app.get('/api/events', async (req: express.Request, res: express.Response) => {
 // Routes
 app.use('/api/monitors', monitorRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/teams', teamRoutes);
-app.use('/api/shares', shareRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bulk-import', bulkImportRoutes);
 

@@ -24,8 +24,8 @@
     <nav class="sidebar-nav" :class="{ 'mobile-open': isMobileOpen }">
       <!-- Individual Monitoring Section -->
       <div class="nav-section">
-        <h3 class="nav-section-title">INDIVIDUAL MONITORING</h3>
-        
+        <h3 class="nav-section-title">MONITORING</h3>
+
         <router-link to="/" class="nav-link" active-class="active" exact>
           <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"></rect>
@@ -46,16 +46,6 @@
           </router-link>
         </div>
 
-        <router-link to="/shared" class="nav-link" active-class="active">
-          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <span class="nav-text">Share Monitors</span>
-        </router-link>
-
         <router-link to="/notifications" class="nav-link" active-class="active">
           <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -65,48 +55,6 @@
           <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
         </router-link>
 
-      </div>
-
-      <!-- Team Monitoring Section -->
-      <div class="nav-section">
-        <h3 class="nav-section-title">TEAM MONITORING</h3>
-        
-        <router-link to="/teams" class="nav-link" active-class="active">
-          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          <span class="nav-text">Teams</span>
-        </router-link>
-
-        <!-- Team Context Subsection -->
-        <div v-if="showTeamSubsection" class="nav-subsection">
-          <div class="nav-subsection-header">
-            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-            </svg>
-            <span class="nav-text-small">{{ currentTeamName }}</span>
-          </div>
-          <router-link :to="`/teams/${currentTeamId}`" class="nav-link-subsection" :class="{ active: route.path === '/teams/' + currentTeamId }">
-            Team Dashboard
-          </router-link>
-          <router-link :to="`/teams/${currentTeamId}/monitors`" class="nav-link-subsection" :class="{ active: route.path === '/teams/' + currentTeamId + '/monitors' }">
-            Team Monitors
-          </router-link>
-        </div>
-
-        <!-- Team Monitor Detail Subsection -->
-        <div v-if="showTeamMonitorSubsection" class="nav-subsection nav-subsection-nested">
-          <router-link :to="currentTeamMonitorRoute" class="nav-link-subsection" active-class="active">
-            <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            </svg>
-            <span class="nav-text">Team Monitor Detail</span>
-          </router-link>
-        </div>
       </div>
     </nav>
 
@@ -135,15 +83,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { useTeamsStore } from '@/stores/teams';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const teamsStore = useTeamsStore();
 
 const isMobileOpen = ref(false);
 const unreadCount = ref(0); // TODO: Connect to notifications store
@@ -155,54 +101,8 @@ const showPersonalMonitorSubsection = computed(() => {
   return route.path.startsWith('/monitor/') && route.params.id;
 });
 
-// Show team subsection for any team route except the teams list
-const showTeamSubsection = computed(() => {
-  // Match team dashboard, team monitors, or any team sub-routes
-  const teamDetailPattern = /^\/teams\/\d+/;
-  const isTeamDetail = teamDetailPattern.test(route.path);
-  const notJustTeamsList = route.path !== '/teams';
-  // Keep submenu visible even on exact team dashboard or monitors page
-  return isTeamDetail && notJustTeamsList;
-});
-
-// Check if on team monitor detail page
-const showTeamMonitorSubsection = computed(() => {
-  return route.path.match(/^\/teams\/\d+\/monitors\/[^\/]+$/);
-});
-
 // Get current monitor route (personal)
 const currentPersonalMonitorRoute = computed(() => {
-  return route.path;
-});
-
-// Get current team info.
-// IMPORTANT: `:id` is used by BOTH /teams/:id and /monitor/:id, so it may hold a
-// monitor UUID. Only read it when we are genuinely on a team route, otherwise
-// parseInt(uuid) yields NaN and we would request /api/teams/NaN.
-const currentTeamId = computed(() => {
-  const raw = route.path.startsWith('/teams/')
-    ? (route.params.teamId || route.params.id)
-    : route.params.teamId;
-  if (!raw) return null;
-  const parsed = parseInt(raw as string, 10);
-  return Number.isNaN(parsed) ? null : parsed;
-});
-
-const currentTeamName = computed(() => {
-  if (!currentTeamId.value) return 'Team';
-  
-  // First check if currentTeam in store matches the route
-  if (teamsStore.currentTeam && teamsStore.currentTeam.id === currentTeamId.value) {
-    return teamsStore.currentTeam.name;
-  }
-  
-  // Otherwise look in teams array
-  const team = teamsStore.teams.find(t => t.id === currentTeamId.value);
-  return team?.name || 'Team';
-});
-
-// Get current team monitor route
-const currentTeamMonitorRoute = computed(() => {
   return route.path;
 });
 
@@ -214,26 +114,6 @@ function handleLogout() {
   authStore.logout();
   router.replace('/login');
 }
-
-function scrollToSection(sectionId: string) {
-  // This is a placeholder - actual implementation would scroll to the section
-}
-
-// Watch for team ID changes and fetch that team
-watch(
-  currentTeamId,
-  async (newTeamId) => {
-    if (newTeamId !== null) {
-      await teamsStore.fetchTeamById(newTeamId);
-    }
-  },
-  { immediate: true }
-);
-
-// Fetch teams on mount to ensure team names are available
-onMounted(async () => {
-  await teamsStore.fetchTeams();
-});
 </script>
 
 <style scoped>

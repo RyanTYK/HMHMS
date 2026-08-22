@@ -20,7 +20,6 @@ CREATE TABLE `users` (
 CREATE TABLE `monitors` (
   `id` VARCHAR(36) PRIMARY KEY,
   `user_id` INT NOT NULL,
-  `team_id` INT NULL,
   `name` VARCHAR(128) NOT NULL,
   `type` ENUM('http','tcp','ping','smb') NOT NULL,
   `target` VARCHAR(255) NOT NULL,
@@ -46,7 +45,6 @@ CREATE TABLE `monitors` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_monitors_user_id` (`user_id`),
-  INDEX `idx_monitors_team_id` (`team_id`),
   INDEX `idx_monitors_last_check` (`last_check`),
   INDEX `idx_monitors_active_paused` (`active`, `is_paused`),
   CONSTRAINT `fk_monitors_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
@@ -64,64 +62,14 @@ CREATE TABLE `check_logs` (
   INDEX (`timestamp`)
 );
 
--- Teams table
-CREATE TABLE `teams` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `name` VARCHAR(128) NOT NULL,
-  `description` TEXT,
-  `created_by` INT NOT NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX `idx_teams_created_by` (`created_by`),
-  CONSTRAINT `fk_teams_creator` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE CASCADE
-);
-
--- Team members table
-CREATE TABLE `team_members` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `team_id` INT NOT NULL,
-  `user_id` INT NOT NULL,
-  `role` ENUM('owner','admin','member') NOT NULL DEFAULT 'member',
-  `status` ENUM('pending','active') NOT NULL DEFAULT 'pending',
-  `joined_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `unique_team_member` (`team_id`, `user_id`),
-  INDEX `idx_team_members_team_id` (`team_id`),
-  INDEX `idx_team_members_user_id` (`user_id`),
-  CONSTRAINT `fk_team_members_team` FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_team_members_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
-);
-
--- Shared monitors table
-CREATE TABLE `shared_monitors` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `monitor_id` VARCHAR(36) NOT NULL,
-  `shared_by` INT NOT NULL,
-  `shared_with_user` INT NULL,
-  `shared_with_team` INT NULL,
-  `role` ENUM('viewer','editor') NOT NULL DEFAULT 'viewer',
-  `status` ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending',
-  `shared_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `responded_at` DATETIME NULL,
-  INDEX `idx_shared_monitors_monitor_id` (`monitor_id`),
-  INDEX `idx_shared_monitors_shared_with_user` (`shared_with_user`),
-  INDEX `idx_shared_monitors_shared_with_team` (`shared_with_team`),
-  CONSTRAINT `fk_shared_monitors_monitor` FOREIGN KEY (`monitor_id`) REFERENCES `monitors`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_shared_monitors_shared_by` FOREIGN KEY (`shared_by`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_shared_monitors_user` FOREIGN KEY (`shared_with_user`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_shared_monitors_team` FOREIGN KEY (`shared_with_team`) REFERENCES `teams`(`id`) ON DELETE CASCADE,
-  CHECK ((`shared_with_user` IS NOT NULL AND `shared_with_team` IS NULL) OR (`shared_with_user` IS NULL AND `shared_with_team` IS NOT NULL))
-);
-
 -- Notifications table (system notifications for UI)
 CREATE TABLE `user_notifications` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT NOT NULL,
-  `type` ENUM('share','invite','alert','system') NOT NULL,
+  `type` ENUM('alert','system') NOT NULL,
   `title` VARCHAR(255) NOT NULL,
   `message` TEXT NOT NULL,
   `related_monitor_id` VARCHAR(36) NULL,
-  `related_team_id` INT NULL,
-  `related_share_id` INT NULL,
   `is_read` BOOLEAN DEFAULT FALSE,
   `action_url` VARCHAR(255) NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,

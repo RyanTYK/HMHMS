@@ -5,7 +5,6 @@ import { Monitor } from '../models/Monitor';
 import { CheckLog } from '../models/CheckLog';
 import { Notification } from '../models/Notification';
 import { User } from '../models/User';
-import { Team } from '../models/Team';
 import { MonitorDependency } from '../models/MonitorDependency';
 import { notificationService } from './notificationService';
 import nodemailer from 'nodemailer';
@@ -426,20 +425,11 @@ export async function runCheck(monitor: Monitor) {
     
     // Create in-app notification ONLY if notify_alert is enabled
     if (monitor.notify_alert) {
-      // Get team name if monitor belongs to a team
-      let teamName: string | undefined;
-      if (monitor.team_id) {
-        const teamRepo = AppDataSource.getRepository(Team);
-        const team = await teamRepo.findOne({ where: { id: monitor.team_id } });
-        teamName = team?.name;
-      }
-      
       await notificationService.createStatusNotification(
         monitor.user_id,
         monitor.id,
         monitor.name,
-        status,
-        teamName
+        status
       );
       console.log(`[CheckEngine] Created in-app notification for ${monitor.name}`);
     } else {

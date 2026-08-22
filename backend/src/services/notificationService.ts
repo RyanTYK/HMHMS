@@ -14,8 +14,6 @@ export class NotificationService {
     title: string;
     message: string;
     relatedMonitorId?: string;
-    relatedShareId?: number;
-    relatedTeamId?: number;
     actionUrl?: string;
   }): Promise<UserNotification> {
     const notification = this.notificationRepository.create({
@@ -24,8 +22,6 @@ export class NotificationService {
       title: data.title,
       message: data.message,
       related_monitor_id: data.relatedMonitorId,
-      related_share_id: data.relatedShareId,
-      related_team_id: data.relatedTeamId,
       action_url: data.actionUrl
     });
 
@@ -51,7 +47,7 @@ export class NotificationService {
 
     const notifications = await this.notificationRepository.find({
       where,
-      relations: ['relatedMonitor', 'relatedShare'],
+      relations: ['relatedMonitor'],
       order: { created_at: 'DESC' }
     });
 
@@ -153,13 +149,11 @@ export class NotificationService {
     userId: number,
     monitorId: string,
     monitorName: string,
-    status: 'up' | 'down',
-    teamName?: string
+    status: 'up' | 'down'
   ): Promise<UserNotification> {
     const type = NotificationType.ALERT;
     const title = status === 'down' ? 'Monitor Down' : 'Monitor Recovered';
-    const source = teamName ? ` (Team: ${teamName})` : ' (Personal)';
-    const message = `Monitor "${monitorName}"${source} is now ${status.toUpperCase()}`;
+    const message = `Monitor "${monitorName}" is now ${status.toUpperCase()}`;
 
     return this.createNotification({
       userId,
@@ -168,23 +162,6 @@ export class NotificationService {
       message,
       relatedMonitorId: monitorId,
       actionUrl: `/monitors/${monitorId}`
-    });
-  }
-
-  /**
-   * Create team invitation notification
-   */
-  async createTeamInviteNotification(
-    userId: number,
-    teamName: string,
-    teamId: number
-  ): Promise<UserNotification> {
-    return this.createNotification({
-      userId,
-      type: NotificationType.INVITE,
-      title: 'Team Invitation',
-      message: `You have been invited to join team "${teamName}"`,
-      actionUrl: `/teams/${teamId}`
     });
   }
 }

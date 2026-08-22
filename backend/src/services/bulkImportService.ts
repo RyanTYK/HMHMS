@@ -11,7 +11,6 @@ interface CSVMonitor {
   retryInterval?: number;
   maxRetries?: number;
   tags?: string;
-  teamId?: number;
   isPaused?: boolean;
 }
 
@@ -51,8 +50,7 @@ export class BulkImportService {
       interval: 'interval',
       timeout: 'timeout',
       retryinterval: 'retryInterval',
-      maxretries: 'maxRetries',
-      teamid: 'teamId'
+      maxretries: 'maxRetries'
     };
 
     for (let i = 1; i < lines.length; i++) {
@@ -187,8 +185,7 @@ export class BulkImportService {
           retry_interval: monitorData.retryInterval || 60,
           max_retries: monitorData.maxRetries || 3,
           is_paused: monitorData.isPaused || false,
-          user_id: userId,
-          team_id: monitorData.teamId || undefined
+          user_id: userId
         });
 
         const savedMonitor = await this.monitorRepository.save(monitor);
@@ -224,9 +221,9 @@ export class BulkImportService {
    * Generate sample CSV template
    */
   generateTemplate(): string {
-    const headers = 'name,url,method,interval,timeout,retryInterval,maxRetries,tags,teamId,isPaused';
-    const example1 = 'Google,https://google.com,GET,60,30,60,3,search;public,,false';
-    const example2 = 'API Endpoint,https://api.example.com/health,GET,120,15,30,2,api;production,,false';
+    const headers = 'name,url,method,interval,timeout,retryInterval,maxRetries,tags,isPaused';
+    const example1 = 'Google,https://google.com,GET,60,30,60,3,search;public,false';
+    const example2 = 'API Endpoint,https://api.example.com/health,GET,120,15,30,2,api;production,false';
     
     return `${headers}\n${example1}\n${example2}`;
   }

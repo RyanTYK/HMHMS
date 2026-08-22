@@ -151,40 +151,6 @@ class BrowserNotificationManager {
   }
 
   /**
-   * Show a notification for a new share invitation
-   */
-  async showShareNotification(sharedBy: string, monitorName: string): Promise<Notification | null> {
-    return this.show({
-      title: 'New Monitor Shared',
-      body: `${sharedBy} shared "${monitorName}" with you`,
-      tag: 'share-notification',
-      data: {
-        type: 'share'
-      },
-      onClick: () => {
-        window.location.href = '/shared';
-      }
-    });
-  }
-
-  /**
-   * Show a notification for a team invitation
-   */
-  async showTeamInviteNotification(teamName: string, invitedBy: string): Promise<Notification | null> {
-    return this.show({
-      title: 'Team Invitation',
-      body: `${invitedBy} invited you to join "${teamName}"`,
-      tag: 'team-invite',
-      data: {
-        type: 'team-invite'
-      },
-      onClick: () => {
-        window.location.href = '/teams';
-      }
-    });
-  }
-
-  /**
    * Show a generic notification
    */
   async showGenericNotification(title: string, message: string, notificationId?: number, force = false): Promise<Notification | null> {

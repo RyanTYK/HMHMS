@@ -244,11 +244,6 @@ import { ref, computed } from 'vue';
 import { useMonitorsStore } from '../stores/monitors';
 import { addToast } from '../composables/useToast';
 
-interface Props {
-  teamId?: number | null;
-}
-
-const props = defineProps<Props>();
 const emit = defineEmits<{ (e: 'close'): void }>();
 
 const monitorsStore = useMonitorsStore();
@@ -422,17 +417,12 @@ async function importMonitors() {
 
   try {
     const token = localStorage.getItem('token');
-    
-    // Use team endpoint if teamId is provided, otherwise use user dashboard endpoint
-    const endpoint = props.teamId 
-      ? `/api/teams/${props.teamId}/monitors/bulk-import`
-      : '/api/monitors/bulk-import';
-    
-    const response = await fetch(endpoint, {
+
+    const response = await fetch('/api/monitors/bulk-import', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        ...(token ? { Authorization: `Bearer ${token}` } : {}) 
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify(monitorsToImport.map(m => {
         const { errors, validation, ...monitorData } = m;
@@ -443,15 +433,9 @@ async function importMonitors() {
     if (!response.ok) throw new Error('Import failed');
 
     const results = await response.json();
-    // Team endpoint wraps response in { success: true, data: {...} }
     importResults.value = results.data || results;
 
-    // Refresh monitors list - use team or user endpoint accordingly
-    if (props.teamId) {
-      await monitorsStore.fetchTeamMonitors(props.teamId);
-    } else {
-      await monitorsStore.fetchAll();
-    }
+    await monitorsStore.fetchAll();
 
     currentStep.value = 'complete';
   } catch (error: any) {

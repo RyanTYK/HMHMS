@@ -2,9 +2,6 @@ import { DataSource } from 'typeorm';
 import { Monitor } from '../models/Monitor';
 import { CheckLog } from '../models/CheckLog';
 import { User } from '../models/User';
-import { Team } from '../models/Team';
-import { TeamMember } from '../models/TeamMember';
-import { SharedMonitor } from '../models/SharedMonitor';
 import { UserNotification } from '../models/UserNotification';
 import { Notification } from '../models/Notification';
 import { MonitorTag } from '../models/MonitorTag';
@@ -23,9 +20,6 @@ export const AppDataSource = new DataSource({
     User,
     Monitor,
     CheckLog,
-    Team,
-    TeamMember,
-    SharedMonitor,
     UserNotification,
     Notification,
     MonitorTag,

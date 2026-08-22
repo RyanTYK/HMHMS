@@ -69,17 +69,7 @@ function setupSSE() {
       // Show browser notification if enabled and tab is not focused
       if (authStore.user?.browser_notifications_enabled !== false) {
         // Determine notification type and show appropriate browser notification
-        if (data.type === 'share') {
-          await browserNotifications.showShareNotification(
-            data.sharedBy || 'Someone',
-            data.monitorName || 'a monitor'
-          );
-        } else if (data.type === 'invite') {
-          await browserNotifications.showTeamInviteNotification(
-            data.teamName || 'a team',
-            data.invitedBy || 'Someone'
-          );
-        } else if (data.type === 'alert') {
+        if (data.type === 'alert') {
           await browserNotifications.showMonitorAlert(
             data.monitorName || 'Monitor',
             data.status || 'changed',

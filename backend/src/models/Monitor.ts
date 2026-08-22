@@ -1,9 +1,7 @@
 import 'reflect-metadata';
 import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, Index, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { User } from './User';
-import { Team } from './Team';
 import { CheckLog } from './CheckLog';
-import { SharedMonitor } from './SharedMonitor';
 import { MonitorTag } from './MonitorTag';
 import { MonitorDependency } from './MonitorDependency';
 
@@ -16,11 +14,6 @@ export class Monitor {
   @Column({ type: 'int' })
   @Index('idx_monitors_user_id')
   user_id!: number;
-
-  // Optional team ownership
-  @Column({ type: 'int', nullable: true })
-  @Index('idx_monitors_team_id')
-  team_id?: number;
 
   @Column({ type: 'varchar', length: 128 })
   name!: string;
@@ -91,15 +84,8 @@ export class Monitor {
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @ManyToOne(() => Team, team => team.monitors, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'team_id' })
-  team?: Team;
-
   @OneToMany(() => CheckLog, log => log.monitor)
   logs!: CheckLog[];
-
-  @OneToMany(() => SharedMonitor, share => share.monitor)
-  shares!: SharedMonitor[];
 
   @OneToMany(() => MonitorTag, tag => tag.monitor)
   monitorTags!: MonitorTag[];

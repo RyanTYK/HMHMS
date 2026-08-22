@@ -263,10 +263,9 @@ type Form = {
   email_recipients?: string | null;
   notify_alert: boolean;
   notify_owner: boolean;
-  team_id?: number | null;
 };
 
-const props = defineProps<{ value?: Partial<Form>; teamId?: number; submitting?: boolean }>();
+const props = defineProps<{ value?: Partial<Form>; submitting?: boolean }>();
 const emit = defineEmits<{ (e: 'submit', payload: Partial<Form>): void; (e: 'close'): void }>();
 
 const authStore = useAuthStore();
@@ -288,7 +287,6 @@ const form = reactive<Form>({
   email_recipients: null,
   notify_alert: true,
   notify_owner: true,
-  team_id: null,
 });
 
 const isEdit = computed(() => Boolean(props.value?.id));
@@ -300,12 +298,6 @@ watch(() => props.value, (v) => {
   }
 }, { immediate: true });
 
-// Set team_id from prop if provided (team context)
-watch(() => props.teamId, (id) => {
-  if (id !== undefined) {
-    form.team_id = id;
-  }
-}, { immediate: true });
 
 // Auto-disable notify_alert and notify_owner when monitoring is disabled
 watch(() => form.active, (isActive) => {

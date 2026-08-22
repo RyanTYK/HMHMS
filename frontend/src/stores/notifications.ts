@@ -4,8 +4,6 @@ import { useAuthStore } from './auth';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export enum NotificationType {
-  SHARE = 'share',
-  INVITE = 'invite',
   ALERT = 'alert',
   SYSTEM = 'system'
 }
@@ -17,8 +15,6 @@ export interface Notification {
   title: string;
   message: string;
   related_monitor_id?: string;
-  related_team_id?: number;
-  related_share_id?: number;
   is_read: boolean;
   action_url?: string;
   created_at: string;
@@ -41,14 +37,8 @@ export const useNotificationsStore = defineStore('notifications', {
 
   getters: {
     unreadNotifications: (state) => state.notifications.filter((n) => !n.is_read),
-    
-    shareNotifications: (state) => 
-      state.notifications.filter((n) => n.type === NotificationType.SHARE),
-    
-    inviteNotifications: (state) => 
-      state.notifications.filter((n) => n.type === NotificationType.INVITE),
-    
-    alertNotifications: (state) => 
+
+    alertNotifications: (state) =>
       state.notifications.filter((n) => n.type === NotificationType.ALERT),
     
     systemNotifications: (state) => 

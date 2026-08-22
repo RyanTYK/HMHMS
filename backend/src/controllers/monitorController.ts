@@ -6,13 +6,13 @@ import { CheckLog } from '../models/CheckLog';
 import { User } from '../models/User';
 import { v4 as uuidv4 } from 'uuid';
 import { runCheck, sendNotification, sendTestNotificationEmail, verifySMTPTransport } from '../services/checkEngine';
-import { LessThan, IsNull } from 'typeorm';
+import { LessThan } from 'typeorm';
 
 export const getMonitors = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const logRepo = AppDataSource.getRepository(CheckLog);
   const userId = (req as any).user?.id as number;
-  const monitors = await repo.find({ where: { user_id: userId, team_id: IsNull() } });
+  const monitors = await repo.find({ where: { user_id: userId } });
   // Attach last status and last_check timestamp
   const withStatus = await Promise.all(
     monitors.map(async (m) => {
@@ -31,7 +31,7 @@ export const getMonitor = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const logRepo = AppDataSource.getRepository(CheckLog);
   const userId = (req as any).user?.id as number;
-  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
   if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
   
   // Get the latest log entry to include last check time and status
@@ -50,7 +50,7 @@ export const getMonitor = async (req: Request, res: Response) => {
 };
 
 export const createMonitor = async (req: Request, res: Response) => {
-  const { name, type, target, port, interval_seconds, timeout_ms, active, tags, dependency, email_recipients, notify_alert, notify_owner, team_id } = req.body || {};
+  const { name, type, target, port, interval_seconds, timeout_ms, active, tags, dependency, email_recipients, notify_alert, notify_owner } = req.body || {};
   if (!name || !type || !target) return res.status(400).json({ error: 'name, type, target are required' });
   if (!['http', 'tcp', 'ping', 'smb'].includes(type)) return res.status(400).json({ error: 'invalid type' });
   if (type === 'tcp' && !port) return res.status(400).json({ error: 'port required for tcp monitors' });
@@ -59,7 +59,6 @@ export const createMonitor = async (req: Request, res: Response) => {
   const monitor = repo.create({
     id: uuidv4(),
     user_id: userId,
-    team_id: team_id ?? null,
     name,
     type,
     target,
@@ -106,7 +105,7 @@ export const createMonitor = async (req: Request, res: Response) => {
 export const updateMonitor = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
-  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
   if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
   const body = req.body || {};
   if (body.type && !['http', 'tcp', 'ping', 'smb'].includes(body.type)) return res.status(400).json({ error: 'invalid type' });
@@ -122,7 +121,7 @@ export const updateMonitor = async (req: Request, res: Response) => {
 export const deleteMonitor = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
-  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
   if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
   await repo.remove(monitor);
   res.status(204).send();
@@ -133,7 +132,7 @@ export const sendTestEmail = async (req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Monitor);
     const userId = (req as any).user?.id as number;
-    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
     if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
 
     const emailList: string[] = [];
@@ -220,7 +219,7 @@ export const getLogs = async (req: Request, res: Response) => {
 export const checkNow = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
-  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+  const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
   if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
   try {
     console.log(`Manual check for monitor ${monitor.id} (${monitor.name})`);
@@ -270,7 +269,6 @@ export const bulkImport = async (req: Request, res: Response) => {
       const monitor = repo.create({
         id: uuidv4(),
         user_id: userId,
-        team_id: undefined,
         name,
         type,
         target,
@@ -303,7 +301,7 @@ export const bulkImport = async (req: Request, res: Response) => {
 export const exportCSV = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
-  const monitors = await repo.find({ where: { user_id: userId, team_id: IsNull() } });
+  const monitors = await repo.find({ where: { user_id: userId } });
 
   const csvHeader = 'name,type,target,port,interval_seconds,timeout_ms,active,is_paused,tags,dependency,email_recipients,notify_owner,retry_interval,max_retries,notification_resend_after\n';
   const csvRows = monitors.map(m =>
@@ -339,7 +337,7 @@ export const pauseMonitor = async (req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Monitor);
     const userId = (req as any).user?.id as number;
-    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
     
     if (!monitor) {
       return res.status(404).json({ error: 'Monitor not found' });
@@ -364,7 +362,7 @@ export const resumeMonitor = async (req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Monitor);
     const userId = (req as any).user?.id as number;
-    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
     
     if (!monitor) {
       return res.status(404).json({ error: 'Monitor not found' });
@@ -443,7 +441,7 @@ export const sendManualNotification = async (req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Monitor);
     const userId = (req as any).user?.id as number;
-    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId, team_id: IsNull() } });
+    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
     
     if (!monitor) {
       return res.status(404).json({ error: 'Monitor not found' });
