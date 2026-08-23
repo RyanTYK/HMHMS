@@ -59,7 +59,7 @@ The complete guide walks you through:
 
 **Access:** http://localhost:8080 (or your configured `HTTP_PORT`)
 
-Images are published to GitHub Container Registry as [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend) and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend) — see the [Quick Start](COMPLETE-SETUP-GUIDE.md#quick-start--prebuilt-images-no-source-checkout) section of the setup guide.
+Images are published to GitHub Container Registry as `ghcr.io/ryantyk/hmhms-db`, [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend) and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend) — see the [Quick Start](COMPLETE-SETUP-GUIDE.md#quick-start--prebuilt-images-no-source-checkout) section of the setup guide.
 
 ## Documentation
 - Setup Guide: [`COMPLETE-SETUP-GUIDE.md`](COMPLETE-SETUP-GUIDE.md)

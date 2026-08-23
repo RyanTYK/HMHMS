@@ -43,7 +43,7 @@ That's it — Node.js, MySQL, and every other dependency run inside containers. 
 
 ## Quick Start — Prebuilt Images (No Source Checkout)
 
-The backend and frontend images are published to GitHub Container Registry as [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend) and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend), both public — no login required to pull. You don't need to clone this repository — just the compose file and a `.env` with a working mail server (see below).
+The database, backend, and frontend images are all published to GitHub Container Registry as `ghcr.io/ryantyk/hmhms-db`, [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend), and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend), all public — no login required to pull, and no source checkout needed since the database schema is baked into the db image at build time. You don't need to clone this repository — just the compose file and a `.env` with a working mail server (see below).
 
 ### Step 1: Download the Compose File and Env Template
 
@@ -146,10 +146,9 @@ docker compose up -d --build
 ```
 
 First run will:
-1. Pull the `mariadb:10.11` image and build the `hmhms-backend`/`hmhms-frontend` images
-2. Start the database and wait for it to become healthy
-3. Initialize the schema from `backend/mysql-schema.sql` (only happens on an empty database)
-4. Start the API, the background check worker, and the nginx-served web UI
+1. Build the `hmhms-db`/`hmhms-backend`/`hmhms-frontend` images from source
+2. Start the database (schema baked into the image, applied only on an empty database) and wait for it to become healthy
+3. Start the API, the background check worker, and the nginx-served web UI
 
 This takes a few minutes on first run (mostly image builds — the prebuilt-image path above skips this). Watch progress with:
 

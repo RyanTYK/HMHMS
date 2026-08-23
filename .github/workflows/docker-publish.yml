@@ -1,14 +1,17 @@
 name: Publish Docker images
 
-# Builds and pushes the backend/frontend images to GitHub Container Registry
-# so anyone can run HMHMS with `docker compose pull && docker compose up -d`
-# (see COMPLETE-SETUP-GUIDE.md) without cloning this repo.
+# Builds and pushes the db/backend/frontend images to GitHub Container
+# Registry so anyone can run HMHMS with `docker compose pull && docker
+# compose up -d` (see COMPLETE-SETUP-GUIDE.md) without cloning this repo.
+# The db image bakes in mysql-schema.sql at build time - a plain
+# mariadb:10.11 image plus a host bind-mount for the schema file only works
+# from a full source checkout, not this no-checkout flow.
 #
 # Uses the automatically-provided GITHUB_TOKEN (via permissions.packages:
 # write below) — no manual secrets to configure. New packages default to
-# private on first publish; make ghcr.io/ryantyk/hmhms-backend and
-# ghcr.io/ryantyk/hmhms-frontend public once under each package's
-# Settings -> Danger Zone -> Change visibility.
+# private on first publish; make ghcr.io/ryantyk/hmhms-db,
+# ghcr.io/ryantyk/hmhms-backend and ghcr.io/ryantyk/hmhms-frontend public
+# once under each package's Settings -> Danger Zone -> Change visibility.
 
 on:
   push:
@@ -30,11 +33,17 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: db
+            context: ./backend
+            dockerfile: ./backend/db.Dockerfile
+            image: ghcr.io/ryantyk/hmhms-db
           - name: backend
             context: ./backend
+            dockerfile: ./backend/Dockerfile
             image: ghcr.io/ryantyk/hmhms-backend
           - name: frontend
             context: ./frontend
+            dockerfile: ./frontend/Dockerfile
             image: ghcr.io/ryantyk/hmhms-frontend
     steps:
       - name: Checkout
@@ -64,6 +73,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

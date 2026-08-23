@@ -9,11 +9,13 @@
 # Only ONE port is published to the host: HTTP_PORT (default 8080). The
 # database and the API talk to each other over the private "hmhms" network.
 #
-# backend/frontend images are published to GitHub Container Registry as
-# ghcr.io/ryantyk/hmhms-backend and ghcr.io/ryantyk/hmhms-frontend (public,
-# no login needed to pull). The `image:` names below double as both the
-# local build tag and the pull target, so `docker compose pull` works
-# without a source checkout.
+# db/backend/frontend images are published to GitHub Container Registry as
+# ghcr.io/ryantyk/hmhms-db, ghcr.io/ryantyk/hmhms-backend and
+# ghcr.io/ryantyk/hmhms-frontend (public, no login needed to pull). The
+# `image:` names below double as both the local build tag and the pull
+# target, so `docker compose pull` works without a source checkout - the db
+# image bakes in mysql-schema.sql at build time for the same reason (a bare
+# host bind-mount would need the full source checkout to exist).
 
 name: hmhms
 
@@ -22,7 +24,10 @@ services:
   # Database
   ##########################################################################
   db:
-    image: mariadb:10.11
+    build:
+      context: ./backend
+      dockerfile: db.Dockerfile
+    image: ghcr.io/ryantyk/hmhms-db:latest
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-hmhms_root}
@@ -32,8 +37,6 @@ services:
       TZ:                    ${TZ:-Asia/Kuala_Lumpur}
     volumes:
       - db_data:/var/lib/mysql
-      # Runs ONLY when db_data is empty (i.e. the very first start).
-      - ./backend/mysql-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
       # Gate the app containers on the server actually accepting connections,
       # which is what caused the ECONNREFUSED failures with the old .bat setup.
