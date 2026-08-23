@@ -123,9 +123,21 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="loading" class="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-fuchsia-600"></div>
-        <p class="mt-4 text-gray-600">Loading notifications...</p>
+      <div v-if="loading" class="space-y-4 animate-pulse">
+        <div
+          v-for="n in 4"
+          :key="n"
+          class="bg-white rounded-lg shadow-md border border-gray-200 p-4"
+        >
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-full bg-gray-200 flex-shrink-0"></div>
+            <div class="flex-1">
+              <div class="h-5 bg-gray-200 rounded w-1/3 mb-2"></div>
+              <div class="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
+              <div class="h-3 bg-gray-200 rounded w-1/6"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
