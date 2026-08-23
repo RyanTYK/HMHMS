@@ -49,7 +49,7 @@ The complete guide walks you through:
 
 ## Quick Reference
 
-**Start (prebuilt images, no source checkout):** `docker compose pull && docker compose up -d`
+**Start (prebuilt images, no source checkout):** set up `.env` (SMTP is required — see the setup guide), then `docker compose pull && docker compose up -d`
 
 **Start (build from source):** `docker compose up -d --build`
 

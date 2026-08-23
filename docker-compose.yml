@@ -85,12 +85,14 @@ services:
       MAX_RETRY_BUDGET_SECONDS: ${MAX_RETRY_BUDGET_SECONDS:-}
       LOG_RETENTION_DAYS:       ${LOG_RETENTION_DAYS:-7}
 
-      # Email
-      SMTP_HOST:   ${SMTP_HOST:-}
+      # Email - REQUIRED. New accounts must verify their email before they
+      # can log in (see COMPLETE-SETUP-GUIDE.md), so without a working SMTP
+      # config nobody can ever finish registering.
+      SMTP_HOST:   ${SMTP_HOST:?SMTP_HOST must be set in .env - required for account email verification. See COMPLETE-SETUP-GUIDE.md.}
       SMTP_PORT:   ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER:   ${SMTP_USER:-}
-      SMTP_PASS:   ${SMTP_PASS:-}
+      SMTP_USER:   ${SMTP_USER:?SMTP_USER must be set in .env - required for account email verification. See COMPLETE-SETUP-GUIDE.md.}
+      SMTP_PASS:   ${SMTP_PASS:?SMTP_PASS must be set in .env - required for account email verification. See COMPLETE-SETUP-GUIDE.md.}
       SMTP_FROM:   ${SMTP_FROM:-}
 
       # Microsoft OAuth (optional)
