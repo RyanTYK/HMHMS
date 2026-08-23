@@ -43,7 +43,7 @@ That's it — Node.js, MySQL, and every other dependency run inside containers. 
 
 ## Quick Start — Prebuilt Images (No Source Checkout)
 
-The backend and frontend images are published to Docker Hub as [`ryantyk/hmhms-backend`](https://hub.docker.com/r/ryantyk/hmhms-backend) and [`ryantyk/hmhms-frontend`](https://hub.docker.com/r/ryantyk/hmhms-frontend), rebuilt automatically on every change. You don't need to clone this repository to run HMHMS — you only need two small config files.
+The backend and frontend images are published to GitHub Container Registry as [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend) and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend), both public — no login required to pull. You don't need to clone this repository to run HMHMS — you only need two small config files.
 
 ### Step 1: Download the Compose File and Env Template
 

@@ -1,12 +1,14 @@
 name: Publish Docker images
 
-# Builds and pushes the backend/frontend images to Docker Hub so anyone can
-# run HMHMS with `docker compose pull && docker compose up -d` (see
-# COMPLETE-SETUP-GUIDE.md) without cloning this repo.
+# Builds and pushes the backend/frontend images to GitHub Container Registry
+# so anyone can run HMHMS with `docker compose pull && docker compose up -d`
+# (see COMPLETE-SETUP-GUIDE.md) without cloning this repo.
 #
-# Requires two repository secrets (Settings -> Secrets and variables ->
-# Actions): DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (a Docker Hub access
-# token, not your account password).
+# Uses the automatically-provided GITHUB_TOKEN (via permissions.packages:
+# write below) — no manual secrets to configure. New packages default to
+# private on first publish; make ghcr.io/ryantyk/hmhms-backend and
+# ghcr.io/ryantyk/hmhms-frontend public once under each package's
+# Settings -> Danger Zone -> Change visibility.
 
 on:
   push:
@@ -18,6 +20,10 @@ on:
       - '.github/workflows/docker-publish.yml'
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -26,10 +32,10 @@ jobs:
         include:
           - name: backend
             context: ./backend
-            image: ryantyk/hmhms-backend
+            image: ghcr.io/ryantyk/hmhms-backend
           - name: frontend
             context: ./frontend
-            image: ryantyk/hmhms-frontend
+            image: ghcr.io/ryantyk/hmhms-frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,11 +43,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract image metadata
         id: meta

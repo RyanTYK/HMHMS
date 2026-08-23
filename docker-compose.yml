@@ -1,18 +1,19 @@
 # HMHMS - Host Machine Health Monitoring System
 # Full stack: MariaDB + API + check worker + web UI
 #
-#   Start (prebuilt images from Docker Hub):  docker compose pull && docker compose up -d
-#   Start (build from source):                docker compose up -d --build
-#   Stop:                                      docker compose down
-#   Logs:                                      docker compose logs -f
+#   Start (prebuilt images from GHCR):  docker compose pull && docker compose up -d
+#   Start (build from source):          docker compose up -d --build
+#   Stop:                                docker compose down
+#   Logs:                                docker compose logs -f
 #
 # Only ONE port is published to the host: HTTP_PORT (default 8080). The
 # database and the API talk to each other over the private "hmhms" network.
 #
-# backend/frontend images are published to Docker Hub as ryantyk/hmhms-backend
-# and ryantyk/hmhms-frontend via .github/workflows/docker-publish.yml. The
-# `image:` names below double as both the local build tag and the pull
-# target, so `docker compose pull` works without a source checkout.
+# backend/frontend images are published to GitHub Container Registry as
+# ghcr.io/ryantyk/hmhms-backend and ghcr.io/ryantyk/hmhms-frontend (public,
+# no login needed to pull). The `image:` names below double as both the
+# local build tag and the pull target, so `docker compose pull` works
+# without a source checkout.
 
 name: hmhms
 
@@ -51,7 +52,7 @@ services:
       context: ./backend
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-}
-    image: ryantyk/hmhms-backend:latest
+    image: ghcr.io/ryantyk/hmhms-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -105,7 +106,7 @@ services:
       context: ./backend
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-}
-    image: ryantyk/hmhms-backend:latest
+    image: ghcr.io/ryantyk/hmhms-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -131,7 +132,7 @@ services:
       context: ./frontend
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-}
-    image: ryantyk/hmhms-frontend:latest
+    image: ghcr.io/ryantyk/hmhms-frontend:latest
     restart: unless-stopped
     depends_on:
       backend:
