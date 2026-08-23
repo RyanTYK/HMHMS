@@ -19,7 +19,7 @@
                 Browser Notifications
               </h3>
               <p class="text-sm text-gray-600 mb-4">
-                Get browser notifications when you receive new alerts, shares, or team invitations while the tab is not focused.
+                Get browser notifications when a monitor goes down or comes back up while the tab is not focused.
               </p>
               
               <!-- Permission Status -->

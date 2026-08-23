@@ -23,11 +23,16 @@ interface MicrosoftProfile {
 }
 
 // Microsoft OAuth Strategy Configuration
-passport.use(
-  new MicrosoftStrategy(
-    {
-      clientID: process.env.MICROSOFT_CLIENT_ID || '',
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+// Optional feature: only register the strategy when credentials are actually
+// configured. passport-oauth2 throws synchronously (crashing the process) if
+// constructed with an empty clientID, and MICROSOFT_CLIENT_ID/SECRET are
+// blank by default in .env.example.
+if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
+  passport.use(
+    new MicrosoftStrategy(
+      {
+      clientID: process.env.MICROSOFT_CLIENT_ID,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
       callbackURL: process.env.MICROSOFT_CALLBACK_URL || 'http://localhost:3000/auth/microsoft/callback',
       scope: ['user.read', 'openid', 'profile', 'email'],
       tenant: process.env.MICROSOFT_TENANT_ID || 'common', // 'common' allows any Microsoft account
@@ -114,8 +119,11 @@ passport.use(
         return done(error, null);
       }
     }
-  )
-);
+    )
+  );
+} else {
+  console.warn('[passport] MICROSOFT_CLIENT_ID/MICROSOFT_CLIENT_SECRET not set - Microsoft SSO is disabled.');
+}
 
 // Serialize user for session
 passport.serializeUser((user: any, done) => {

@@ -22,7 +22,7 @@ This guide will walk you through setting up Microsoft Single Sign-On (SSO) for H
      - OR choose "Accounts in this organizational directory only" for organization-only access
    - **Redirect URI**: 
      - Platform: `Web`
-     - URL: `http://localhost:3001/api/auth/microsoft/callback` (for development)
+     - URL: `http://localhost:8080/api/auth/microsoft/callback` (or your `PUBLIC_URL` + `/api/auth/microsoft/callback` if other machines will reach this deployment)
 4. Click **Register**
 
 ### Step 3: Get Application Credentials
@@ -69,10 +69,10 @@ When deploying to production:
 
 ---
 
-## Phase 2: Backend Configuration
+## Phase 2: Configuration
 
 ### Step 1: Update Environment Variables
-1. Open your `.env` file (or create from `example.env`)
+1. Open the root `.env` file (copy from `.env.example` if you haven't already)
 2. Add/update these values:
 
 ```env
@@ -80,36 +80,17 @@ When deploying to production:
 MICROSOFT_CLIENT_ID=your-client-id-from-azure
 MICROSOFT_CLIENT_SECRET=your-client-secret-from-azure
 MICROSOFT_TENANT_ID=common
-MICROSOFT_CALLBACK_URL=http://localhost:3001/api/auth/microsoft/callback
-
-# Frontend URL (for redirects)
-FRONTEND_URL=http://localhost:5173
+MICROSOFT_CALLBACK_URL=http://localhost:8080/api/auth/microsoft/callback
 
 # Ensure JWT secret is set
 JWT_SECRET=your-secure-jwt-secret-key
 ```
 
-### Step 2: Restart Backend Server
+There is no separate frontend configuration — the frontend is served by nginx on the same origin as the API, so no extra URL/CORS setup is needed.
+
+### Step 2: Restart the Stack
 ```bash
-cd backend
-npm run dev
-```
-
----
-
-## Phase 3: Frontend Configuration
-
-### Step 1: Environment Variables (Optional)
-If your backend is not on `http://localhost:3001`, create/update `frontend/.env`:
-
-```env
-VITE_API_URL=http://localhost:3001
-```
-
-### Step 2: Restart Frontend
-```bash
-cd frontend
-npm run dev
+docker compose up -d --build
 ```
 
 ---
@@ -117,7 +98,7 @@ npm run dev
 ## Testing the Integration
 
 ### Test 1: Microsoft SSO Login
-1. Navigate to `http://localhost:5173/login`
+1. Navigate to `http://localhost:8080/login`
 2. Click **"Sign in with Microsoft"** button
 3. You'll be redirected to Microsoft login page
 4. Sign in with your Microsoft account
@@ -143,8 +124,8 @@ npm run dev
 ### Error: "redirect_uri_mismatch"
 - **Cause**: Redirect URI in Azure doesn't match backend callback URL
 - **Fix**: Ensure `MICROSOFT_CALLBACK_URL` exactly matches Azure redirect URI
-- Azure: `http://localhost:3001/api/auth/microsoft/callback`
-- .env: `MICROSOFT_CALLBACK_URL=http://localhost:3001/api/auth/microsoft/callback`
+- Azure: `http://localhost:8080/api/auth/microsoft/callback`
+- .env: `MICROSOFT_CALLBACK_URL=http://localhost:8080/api/auth/microsoft/callback`
 
 ### Error: "invalid_client"
 - **Cause**: Client ID or Secret is incorrect

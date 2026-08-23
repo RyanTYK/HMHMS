@@ -25,13 +25,12 @@ The complete guide walks you through:
 
 
 ## Features
-- Authentication: JWT-based auth, protected API routes
+- Authentication: JWT-based auth, protected API routes, optional Microsoft SSO
 - Monitor Management: CRUD, intervals/timeouts, expected status, headers/body, bulk import (CSV/JSON)
 - Automated Checks: worker process, lock manager, response time + status validation
 - Real‑Time Updates: SSE streams for dashboards and details
 - Historical Data: check logs, uptime %, response-time sparklines
 - Data Retention: scheduled cleanup with cron-like jobs
-- Teams & Sharing: team dashboards, per‑monitor sharing, roles
 - Notifications: email + in-app, with future browser notifications
 
 
@@ -44,41 +43,33 @@ The complete guide walks you through:
 ## Monorepo Structure
 - `backend/`: Express API, workers, TypeORM models, migrations, scripts
 - `frontend/`: Vue 3 SPA served by Vite in dev, static build for prod
-- `docs/`: architecture, database design, local dev, deployment, API docs
-- `start-dev.bat`: one‑click local dev starter (API, worker, frontend)
+- `docs/`: setup guides, SSO setup, colour palette, milestones
+- `docker-compose.yml`: single entry point to run the full stack locally
 
 
 ## Quick Reference
 
-**One-click start:** `start-dev.bat` or press **F5** in VS Code
+**Start (prebuilt images, no source checkout):** `docker compose pull && docker compose up -d`
 
-**Manual start:**
-```cmd
-cd backend && npm run dev     # Terminal 1 - API (port 3001)
-cd backend && npm run worker  # Terminal 2 - Worker
-cd frontend && npm run dev    # Terminal 3 - Frontend (port 5173)
-```
+**Start (build from source):** `docker compose up -d --build`
 
-**Access:** Frontend at http://localhost:5173 | API at http://localhost:3001
+**Stop:** `docker compose down`
+
+**Logs:** `docker compose logs -f`
+
+**Access:** http://localhost:8080 (or your configured `HTTP_PORT`)
+
+Images are published to Docker Hub as [`ryantyk/hmhms-backend`](https://hub.docker.com/r/ryantyk/hmhms-backend) and [`ryantyk/hmhms-frontend`](https://hub.docker.com/r/ryantyk/hmhms-frontend) — see the [Quick Start](COMPLETE-SETUP-GUIDE.md#quick-start--prebuilt-images-no-source-checkout) section of the setup guide.
 
 ## Documentation
-- Overview: `docs/00-PROJECT-OVERVIEW.md`
-- Backend Arch: `docs/01-BACKEND-ARCHITECTURE.md`
-- Frontend Arch: `docs/02-FRONTEND-ARCHITECTURE.md`
-- Database Design: `docs/03-DATABASE-DESIGN.md`
-- Auth System: `docs/04-AUTHENTICATION-SYSTEM.md`
-- Health Checks: `docs/05-HEALTH-CHECK-SYSTEM.md`
-- Real‑Time (SSE): `docs/06-REAL-TIME-UPDATES-SSE.md`
-- Local Dev: `docs/07-LOCAL-DEVELOPMENT.md`
-- Deployment: `docs/08-PRODUCTION-DEPLOYMENT.md`
-- API Docs: `docs/09-API-DOCUMENTATION.md`
-- New Features Plan: `docs/10-NEW-FEATURES-TO-IMPLEMENT.md`
-- Monitor Scoping: `docs/14-MONITOR-SCOPING-IMPLEMENTATION.md`
- - Milestones: `docs/MILESTONES.md`
+- Setup Guide: [`COMPLETE-SETUP-GUIDE.md`](COMPLETE-SETUP-GUIDE.md)
+- Microsoft SSO Setup: [`docs/MICROSOFT-SSO-SETUP.md`](docs/MICROSOFT-SSO-SETUP.md)
+- Colour Palette: [`docs/COLOUR-PALETTE.md`](docs/COLOUR-PALETTE.md)
+- Milestones: [`docs/MILESTONE/MILESTONES.md`](docs/MILESTONE/MILESTONES.md)
 
 
 ## Production Notes
-- Reverse proxy and SSL recommended (see `docs/08-PRODUCTION-DEPLOYMENT.md`)
+- This branch targets a single-VM, local-network deployment via Docker Compose (see `COMPLETE-SETUP-GUIDE.md`). For internet-facing deployments, put a reverse proxy with SSL in front of the published `HTTP_PORT`.
 
 
 ## License

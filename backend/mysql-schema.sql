@@ -29,8 +29,6 @@ CREATE TABLE `monitors` (
   `active` BOOLEAN DEFAULT TRUE,
   `is_paused` BOOLEAN DEFAULT FALSE,
   `tags` VARCHAR(255),
-  `smb_username` VARCHAR(128),
-  `smb_password` VARCHAR(128),
   `dependency` VARCHAR(255),
   `email_recipients` TEXT,
   `notify_alert` BOOLEAN DEFAULT TRUE,
@@ -58,8 +56,8 @@ CREATE TABLE `check_logs` (
   `response_time_ms` INT,
   `http_status` INT,
   `error_text` TEXT,
-  INDEX (`monitor_id`),
-  INDEX (`timestamp`)
+  INDEX `idx_check_logs_monitor_timestamp` (`monitor_id`, `timestamp`),
+  INDEX `idx_check_logs_timestamp` (`timestamp`)
 );
 
 -- Notifications table (system notifications for UI)
