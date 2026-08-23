@@ -81,10 +81,9 @@ MICROSOFT_CLIENT_ID=your-client-id-from-azure
 MICROSOFT_CLIENT_SECRET=your-client-secret-from-azure
 MICROSOFT_TENANT_ID=common
 MICROSOFT_CALLBACK_URL=http://localhost:8080/api/auth/microsoft/callback
-
-# Ensure JWT secret is set
-JWT_SECRET=your-secure-jwt-secret-key
 ```
+
+`JWT_SECRET` doesn't need to be set for this — the backend generates and persists its own signing secret automatically if left blank.
 
 There is no separate frontend configuration — the frontend is served by nginx on the same origin as the API, so no extra URL/CORS setup is needed.
 

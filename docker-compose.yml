@@ -70,7 +70,9 @@ services:
       DB_SYNC: "false"
 
       PORT: "3001"
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      # Optional: leave unset and the backend will generate one on first
+      # boot and persist it in the database (see backend/src/utils/jwtSecret.ts).
+      JWT_SECRET: ${JWT_SECRET:-}
       # The browser always talks to nginx, so the only valid origin is the
       # published UI address.
       CORS_ORIGIN:  ${PUBLIC_URL:-http://localhost:8080}

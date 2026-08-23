@@ -5,8 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { generateVerificationToken, sendVerificationEmail } from '../services/emailService';
 import passport from '../config/passport';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+import { getJwtSecret } from '../utils/jwtSecret';
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -34,7 +33,7 @@ export const login = async (req: Request, res: Response) => {
   
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+  const token = jwt.sign({ id: user.id, email: user.email }, getJwtSecret(), { expiresIn: '1d' });
   res.json({ token });
 };
 
@@ -280,7 +279,7 @@ export const microsoftCallback = [
       }
 
       // Generate JWT token for the user
-      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '1d' });
+      const token = jwt.sign({ id: user.id, email: user.email }, getJwtSecret(), { expiresIn: '1d' });
       
       // Redirect to frontend with token
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';

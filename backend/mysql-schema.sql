@@ -112,3 +112,10 @@ CREATE TABLE `monitor_dependencies` (
   CONSTRAINT `fk_monitor_dependencies_depends_on` FOREIGN KEY (`depends_on_monitor_id`) REFERENCES `monitors`(`id`) ON DELETE CASCADE,
   CHECK (`monitor_id` != `depends_on_monitor_id`)
 );
+
+-- Small key/value store for server-generated values that must survive
+-- restarts, e.g. an auto-generated JWT signing secret (see backend/src/utils/jwtSecret.ts).
+CREATE TABLE `app_settings` (
+  `key` VARCHAR(100) PRIMARY KEY,
+  `value` TEXT NOT NULL
+);

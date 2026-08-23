@@ -14,6 +14,7 @@ import authRoutes from './routes/authRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import bulkImportRoutes from './routes/bulkImportRoutes';
 import jwt from 'jsonwebtoken';
+import { initJwtSecret, getJwtSecret } from './utils/jwtSecret';
 
 const app = express();
 
@@ -40,7 +41,7 @@ app.get('/api/events', async (req: express.Request, res: express.Response) => {
 		const authHeader = req.headers['authorization'];
 		const token = (authHeader && authHeader.split(' ')[1]) || (req.query.token as string | undefined);
 		if (!token) return res.status(401).end();
-		const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'changeme');
+		const decoded: any = jwt.verify(token, getJwtSecret());
 
 		res.writeHead(200, {
 			'Content-Type': 'text/event-stream',
@@ -83,8 +84,9 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const PORT = Number(process.env.PORT) || 3000;
 
 AppDataSource.initialize()
-	.then(() => {
+	.then(async () => {
 		console.log('Data Source has been initialized!');
+		await initJwtSecret();
 		app.listen(PORT, () => {
 			console.log(`Backend listening on http://localhost:${PORT}`);
 		});

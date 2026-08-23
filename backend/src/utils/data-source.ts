@@ -6,6 +6,7 @@ import { UserNotification } from '../models/UserNotification';
 import { Notification } from '../models/Notification';
 import { MonitorTag } from '../models/MonitorTag';
 import { MonitorDependency } from '../models/MonitorDependency';
+import { AppSetting } from '../models/AppSetting';
 
 const shouldSync = process.env.DB_SYNC === 'true';
 
@@ -23,7 +24,8 @@ export const AppDataSource = new DataSource({
     UserNotification,
     Notification,
     MonitorTag,
-    MonitorDependency
+    MonitorDependency,
+    AppSetting
   ],
   migrations: ['src/migrations/*.ts'],
   migrationsTableName: 'migrations',

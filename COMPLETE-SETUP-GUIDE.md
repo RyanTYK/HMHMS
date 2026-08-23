@@ -43,29 +43,25 @@ That's it — Node.js, MySQL, and every other dependency run inside containers. 
 
 ## Quick Start — Prebuilt Images (No Source Checkout)
 
-The backend and frontend images are published to GitHub Container Registry as [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend) and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend), both public — no login required to pull. You don't need to clone this repository to run HMHMS — you only need two small config files.
+The backend and frontend images are published to GitHub Container Registry as [`ghcr.io/ryantyk/hmhms-backend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-backend) and [`ghcr.io/ryantyk/hmhms-frontend`](https://github.com/RyanTYK/HMHMS/pkgs/container/hmhms-frontend), both public — no login required to pull. You don't need to clone this repository, and you don't need to configure anything — just the compose file.
 
-### Step 1: Download the Compose File and Env Template
+### Step 1: Download the Compose File
 
 ```cmd
 mkdir HMHMS && cd HMHMS
 curl -o docker-compose.yml https://raw.githubusercontent.com/RyanTYK/HMHMS/local-only/docker-compose.yml
-curl -o .env.example https://raw.githubusercontent.com/RyanTYK/HMHMS/local-only/.env.example
-copy .env.example .env
 ```
 
-### Step 2: Configure `.env`
-
-Open `.env` and set `JWT_SECRET` (required) and, optionally, `DB_PASS`/`DB_ROOT_PASSWORD` — see [Configuration](#configuration) below for details.
-
-### Step 3: Pull and Run
+### Step 2: Pull and Run
 
 ```cmd
 docker compose pull
 docker compose up -d
 ```
 
-This fetches the prebuilt images (skipping the multi-minute local build entirely) and starts the full stack. Continue at [Verification & Testing](#verification--testing).
+This fetches the prebuilt images (skipping the multi-minute local build entirely) and starts the full stack — database, API, worker, and web UI. No `.env` file is required: database passwords default to working (if insecure) values, and the backend generates its own login-token secret on first boot and persists it in the database, so restarts don't log anyone out. Continue at [Verification & Testing](#verification--testing).
+
+If you want a custom port, a real (non-default) database password, or to expose this to other machines on your network, grab `.env.example` too and see [Configuration](#configuration) — none of it is required to get started.
 
 If you want to modify the source code instead, follow [Getting the Code](#getting-the-code-build-from-source) below and use `docker compose up -d --build` — Compose builds locally whenever an image tag isn't already present, and `--build` forces a rebuild even if it is.
 
@@ -87,6 +83,8 @@ git checkout local-only
 
 ## Configuration
 
+`.env` is entirely optional — every setting has a working default. Create one only if you want to change something.
+
 ### Step 1: Create Your `.env` File
 
 Copy the example file at the repo root:
@@ -97,24 +95,27 @@ copy .env.example .env
 
 This `.env` is read automatically by `docker compose` and is git-ignored, so your secrets stay local.
 
-### Step 2: Set Required Values
-
-Open `.env` and set at minimum:
+### Step 2: Adjust What You Need
 
 ```env
-# Generate with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-# (or use any online random-hex generator if you don't have Node.js installed)
-JWT_SECRET=<paste a long random string here>
+# Port the web UI is published on (default 8080)
+HTTP_PORT=8080
 
+# The address people actually browse to. If other machines on your network
+# need access, set this to the host's LAN IP, e.g. http://10.180.11.78:8080
+PUBLIC_URL=http://localhost:8080
+
+# Real database credentials instead of the built-in defaults
 DB_USER=hmhms
 DB_PASS=<pick a password>
 DB_ROOT_PASSWORD=<pick a different password>
+
+# Optional: pin the login-token signing secret instead of letting the
+# backend generate and persist its own. Only needed if you're running
+# multiple backend instances that must share one secret.
+# Generate with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+JWT_SECRET=
 ```
-
-### Step 3: (Optional) Adjust Access Settings
-
-- `HTTP_PORT` — the port the web UI is published on (default `8080`)
-- `PUBLIC_URL` — the address people will actually browse to. If other machines on your network need access, set this to the host's LAN IP, e.g. `http://10.180.11.78:8080`, instead of `localhost`.
 
 Everything else in `.env` (worker tuning, SMTP, Microsoft OAuth) has working defaults and can be left blank — see [Optional Configuration](#optional-configuration).
 
@@ -195,7 +196,7 @@ docker compose logs backend
 docker compose logs worker
 docker compose logs db
 ```
-Most commonly this is a missing `JWT_SECRET` in `.env` (the backend refuses to start without it).
+This is most commonly a database connectivity issue — check `docker compose logs db` first and confirm it reports healthy before the backend starts.
 
 ### Build fails with a TLS/registry error (`TLS_ALERT_HANDSHAKE_FAILURE`, "Exit handler never called")
 
