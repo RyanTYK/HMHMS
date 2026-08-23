@@ -15,11 +15,6 @@ export const generateVerificationToken = (): string => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-// Whether this deployment has a mail server configured at all. Without one,
-// there's no way to deliver a verification email, so callers should skip
-// the verification requirement entirely rather than send-and-fail.
-export const isEmailConfigured = (): boolean => Boolean(process.env.SMTP_HOST);
-
 export const sendVerificationEmail = async (email: string, token: string, name: string): Promise<void> => {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;

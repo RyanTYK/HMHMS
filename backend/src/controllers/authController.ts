@@ -3,7 +3,7 @@ import { AppDataSource } from '../utils/data-source';
 import { User } from '../models/User';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { generateVerificationToken, sendVerificationEmail, isEmailConfigured } from '../services/emailService';
+import { generateVerificationToken, sendVerificationEmail } from '../services/emailService';
 import passport from '../config/passport';
 import { getJwtSecret } from '../utils/jwtSecret';
 
@@ -47,36 +47,28 @@ export const register = async (req: Request, res: Response) => {
     const password_hash = await bcrypt.hash(password, 10);
     const verification_token = generateVerificationToken();
     const verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    const emailConfigured = isEmailConfigured();
-
-    const user = repo.create({
-      email,
-      password_hash,
+    
+    const user = repo.create({ 
+      email, 
+      password_hash, 
       name,
-      // No mail server configured on this deployment - there's no way to
-      // deliver a verification link, so don't block login on it.
-      email_verified: !emailConfigured,
+      email_verified: false,
       verification_token,
       verification_token_expires
     });
     await repo.save(user);
-
+    
     // Send verification email
-    if (emailConfigured) {
-      try {
-        await sendVerificationEmail(email, verification_token, name);
-      } catch (emailError: any) {
-        console.error('Failed to send verification email:', emailError);
-        // Don't fail registration if email fails - user can request resend
-      }
+    try {
+      await sendVerificationEmail(email, verification_token, name);
+    } catch (emailError: any) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails - user can request resend
     }
-
-    res.status(201).json({
-      message: emailConfigured
-        ? 'Registration successful! Please check your email to verify your account.'
-        : 'Registration successful! You can log in now.',
-      email: user.email,
-      emailVerificationRequired: emailConfigured
+    
+    res.status(201).json({ 
+      message: 'Registration successful! Please check your email to verify your account.',
+      email: user.email 
     });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Registration failed' });
@@ -241,19 +233,7 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
     if (user.email_verified) {
       return res.status(400).json({ error: 'Email is already verified' });
     }
-
-    // No mail server configured on this deployment - nothing we can send.
-    // Auto-verify so accounts created before this was handled at
-    // registration time aren't left stuck either.
-    if (!isEmailConfigured()) {
-      user.email_verified = true;
-      await repo.save(user);
-      return res.json({
-        success: true,
-        message: 'Email verification is not required on this deployment. You can log in now.'
-      });
-    }
-
+    
     // Generate new verification token
     const verification_token = generateVerificationToken();
     const verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
