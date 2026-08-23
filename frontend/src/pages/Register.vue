@@ -27,18 +27,23 @@
             </svg>
             <div class="flex-1">
               <p class="text-white font-semibold mb-1">Registration Successful!</p>
-              <p class="text-white/90 text-sm">
-                We've sent a verification email to <strong>{{ email }}</strong>. 
-                Please check your inbox and click the verification link to complete your registration.
-              </p>
-              <p class="text-white/70 text-xs mt-2 italic">
-                Don't forget to check your spam folder if you don't see it within a few minutes.
+              <template v-if="emailVerificationRequired">
+                <p class="text-white/90 text-sm">
+                  We've sent a verification email to <strong>{{ email }}</strong>.
+                  Please check your inbox and click the verification link to complete your registration.
+                </p>
+                <p class="text-white/70 text-xs mt-2 italic">
+                  Don't forget to check your spam folder if you don't see it within a few minutes.
+                </p>
+              </template>
+              <p v-else class="text-white/90 text-sm">
+                You can log in now.
               </p>
             </div>
           </div>
-          
-          <!-- Resend Button -->
-          <div class="mt-3 text-center">
+
+          <!-- Resend Button (only when this deployment actually sends verification emails) -->
+          <div v-if="emailVerificationRequired" class="mt-3 text-center">
             <button
               @click="resendVerification"
               :disabled="resendCooldown > 0 || isResending"
@@ -59,6 +64,11 @@
                 Resend Verification Email
               </span>
             </button>
+          </div>
+          <div v-else class="mt-3 text-center">
+            <router-link to="/login" class="text-xs font-semibold px-4 py-2 rounded-lg transition-all bg-white/20 text-white hover:bg-white/30 inline-block">
+              Go to Login
+            </router-link>
           </div>
         </div>
         
@@ -207,6 +217,7 @@ const showPassword = ref(false);
 const showConfirm = ref(false);
 const error = ref('');
 const registered = ref(false);
+const emailVerificationRequired = ref(true);
 const isLoading = ref(false);
 const isResending = ref(false);
 const resendCooldown = ref(0);
@@ -231,13 +242,16 @@ async function onSubmit() {
     
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Register failed');
-    
+
     // Show success message instead of auto-login
     registered.value = true;
-    
-    // Start cooldown timer
-    startResendCooldown();
-    
+    emailVerificationRequired.value = data.emailVerificationRequired !== false;
+
+    // Start cooldown timer (only relevant when we actually sent an email)
+    if (emailVerificationRequired.value) {
+      startResendCooldown();
+    }
+
     // Clear password fields for security
     password.value = '';
     confirm.value = '';
