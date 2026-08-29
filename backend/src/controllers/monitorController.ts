@@ -102,13 +102,28 @@ export const createMonitor = async (req: Request, res: Response) => {
   res.status(201).json(monitor);
 };
 
+// Fields a client is allowed to change. Merging the raw request body onto
+// the entity (as this used to do) let a client include `user_id` or `id`
+// and reassign/hijack another user's monitor, or tamper with server-managed
+// fields like last_status/uptime_percentage.
+const MONITOR_UPDATABLE_FIELDS = [
+  'name', 'type', 'target', 'port', 'interval_seconds', 'timeout_ms',
+  'active', 'is_paused', 'tags', 'dependency', 'email_recipients',
+  'notify_alert', 'notify_owner', 'retry_interval', 'max_retries',
+  'notification_resend_after',
+] as const;
+
 export const updateMonitor = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
   const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
   if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
-  const body = req.body || {};
-  if (body.type && !['http', 'tcp', 'ping', 'smb'].includes(body.type)) return res.status(400).json({ error: 'invalid type' });
+  const rawBody = req.body || {};
+  const body: Record<string, unknown> = {};
+  for (const field of MONITOR_UPDATABLE_FIELDS) {
+    if (rawBody[field] !== undefined) body[field] = rawBody[field];
+  }
+  if (body.type && !['http', 'tcp', 'ping', 'smb'].includes(body.type as string)) return res.status(400).json({ error: 'invalid type' });
   if ((body.type === 'tcp' || monitor.type === 'tcp') && body.port === undefined && monitor.port == null) {
     // ensure port remains present for tcp
     return res.status(400).json({ error: 'port required for tcp monitors' });
@@ -447,12 +462,24 @@ export const sendManualNotification = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Monitor not found' });
     }
 
-    const { message } = req.body;
-    
-    // Send notification with custom message
-    await sendNotification(monitor, 'down', message || 'Manual notification');
-    
-    res.json({ message: 'Notification sent successfully' });
+    const emailList: string[] = [];
+    if (monitor.notify_owner) {
+      const userRepo = AppDataSource.getRepository(User);
+      const owner = await userRepo.findOne({ where: { id: monitor.user_id } });
+      if (owner?.email) emailList.push(owner.email);
+    }
+    if (monitor.email_recipients) {
+      emailList.push(...monitor.email_recipients.split(',').map(e => e.trim()).filter(Boolean));
+    }
+    if (emailList.length === 0) {
+      return res.status(400).json({ error: 'No email recipients configured for this monitor' });
+    }
+
+    for (const email of emailList) {
+      await sendNotification(monitor, 'down', email);
+    }
+
+    res.json({ message: 'Notification sent successfully', sent: emailList.length });
   } catch (error: any) {
     console.error('Error sending manual notification:', error);
     res.status(500).json({ error: error.message || 'Failed to send notification' });
