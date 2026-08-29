@@ -40,10 +40,16 @@ export const login = async (req: Request, res: Response) => {
 export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, name } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'Email, password, and name are required' });
+    }
+    if (typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
     const repo = AppDataSource.getRepository(User);
     const exists = await repo.findOneBy({ email });
     if (exists) return res.status(400).json({ error: 'Email already registered' });
-    
+
     const password_hash = await bcrypt.hash(password, 10);
     const verification_token = generateVerificationToken();
     const verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -90,24 +96,6 @@ export const me = async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Failed to fetch user' });
-  }
-};
-
-export const getAllUsers = async (req: Request, res: Response) => {
-  try {
-    const userPayload: any = (req as any).user;
-    if (!userPayload?.id) return res.status(401).json({ error: 'Unauthorized' });
-    const repo = AppDataSource.getRepository(User);
-    const users = await repo.find({
-      where: { active: true },
-      select: ['id', 'email', 'name'],
-      order: { name: 'ASC' }
-    });
-    // Filter out the current user from the list
-    const filteredUsers = users.filter(u => u.id !== userPayload.id);
-    res.json({ success: true, users: filteredUsers });
-  } catch (e: any) {
-    res.status(500).json({ success: false, error: e?.message || 'Failed to fetch users' });
   }
 };
 

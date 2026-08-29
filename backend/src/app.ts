@@ -18,6 +18,13 @@ import { initJwtSecret, getJwtSecret } from './utils/jwtSecret';
 
 const app = express();
 
+// Backend is only ever reached through the nginx container on the private
+// Docker network (see frontend/nginx.conf), so trust exactly that one proxy
+// hop. Without this, req.ip ignores X-Forwarded-For and resolves to
+// nginx's internal address for every request, which would make IP-based
+// rate limiting (below) bucket all real clients together.
+app.set('trust proxy', 1);
+
 // Basic middleware
 app.use(express.json());
 app.use(

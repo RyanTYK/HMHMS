@@ -103,9 +103,10 @@
           <input
             :type="showPassword ? 'text' : 'password'"
             v-model="password"
-            placeholder="Password"
+            placeholder="Password (min. 8 characters)"
             class="flex-1 bg-transparent text-white outline-none py-4 placeholder-gray-400 border-none focus:ring-0 appearance-none rounded-none" style="border:none;outline:none;box-shadow:none;border-radius:0;background:transparent;"
             required
+            minlength="8"
             :disabled="isLoading"
           />
           <button type="button" class="ml-3 text-gray-400 hover:text-gray-300" @click="showPassword = !showPassword" aria-label="Toggle password visibility" :disabled="isLoading">
@@ -219,10 +220,13 @@ async function onSubmit() {
   isLoading.value = true;
   
   try {
+    if (password.value.length < 8) {
+      throw new Error('Password must be at least 8 characters');
+    }
     if (password.value !== confirm.value) {
       throw new Error('Passwords do not match');
     }
-    
+
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
