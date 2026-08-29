@@ -648,7 +648,7 @@ import BulkImportModal from '../components/BulkImportModal.vue';
 import BulkEditModal from '../components/BulkEditModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import SmallSparkline from '../components/SmallSparkline.vue';
-import { addToast } from '../composables/useToast';
+import { addToast, escapeHtml } from '../composables/useToast';
 import { useMonitorsStore, type Monitor as BaseMonitor } from '../stores/monitors';
 import { useSSE } from '../composables/useSSE';
 import { useAuthStore } from '../stores/auth';
@@ -860,7 +860,7 @@ async function confirmBulkDelete() {
     selectedMonitors.value = [];
     selectionMode.value = false;
   } catch (error: any) {
-    addToast(`Failed to delete monitors: ${error?.message || error}`, 'error');
+    addToast(`Failed to delete monitors: ${escapeHtml(error?.message || error)}`, 'error');
   } finally {
     showConfirm.value = false;
     confirmTarget.value = null;
@@ -902,9 +902,9 @@ async function confirmDelete() {
   // Handle single delete
   try {
     await store.remove(confirmTarget.value.id);
-    addToast(`Deleted monitor "${confirmTarget.value.name}"`, 'success');
+    addToast(`Deleted monitor "${escapeHtml(confirmTarget.value.name)}"`, 'success');
   } catch (error: any) {
-    addToast(`Failed to delete: ${error?.message || error}`, 'error');
+    addToast(`Failed to delete: ${escapeHtml(error?.message || error)}`, 'error');
   } finally {
     showConfirm.value = false;
     confirmTarget.value = null;
@@ -981,17 +981,17 @@ async function onSubmit(payload: any) {
   try {
     if (editing.value?.id) {
       await store.update(editing.value.id, payload);
-      addToast(`Updated monitor "${payload.name}"`, 'success');
+      addToast(`Updated monitor "${escapeHtml(payload.name)}"`, 'success');
     } else {
       await store.create(payload);
-      addToast(`Created monitor "${payload.name}"`, 'success');
+      addToast(`Created monitor "${escapeHtml(payload.name)}"`, 'success');
       // Re-enrich sparklines after creating new monitor
       await enrichSparklines();
     }
     showForm.value = false;
     editing.value = null;
   } catch (e: any) {
-    addToast(`Failed: ${e.message || e}`, 'error');
+    addToast(`Failed: ${escapeHtml(e.message || e)}`, 'error');
   } finally {
     submitting.value = false;
   }

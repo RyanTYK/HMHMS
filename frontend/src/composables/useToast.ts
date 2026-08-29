@@ -34,4 +34,19 @@ export function removeToast(id: number) {
   return useToast().remove(id);
 }
 
+// ToastContainer renders messages with v-html so callers can bold/line-break
+// (e.g. `<strong>Test failed</strong><br/>${msg}`). Any dynamic value
+// interpolated into a message - a monitor name, a target, an error string -
+// must be escaped with this first, or it's a stored XSS vector: monitor
+// name/target are fully user-controlled and get embedded as raw HTML the
+// next time a toast references them (create/update/delete/test).
+export function escapeHtml(value: unknown): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export default useToast;

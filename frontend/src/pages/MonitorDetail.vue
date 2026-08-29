@@ -213,7 +213,7 @@
 import { ref, onMounted, computed, nextTick, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Chart from 'chart.js/auto';
-import { addToast } from '../composables/useToast';
+import { addToast, escapeHtml } from '../composables/useToast';
 
 const route = useRoute();
 const router = useRouter();
@@ -280,16 +280,16 @@ async function sendTestEmail() {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Unknown error' }));
       const msg = err.error || res.statusText || 'Failed to send test notification';
-      addToast(`<strong>Test failed</strong><br/>${msg}`, 'error');
+      addToast(`<strong>Test failed</strong><br/>${escapeHtml(msg)}`, 'error');
     } else {
       const data = await res.json().catch(() => ({ ok: true }));
       const sent = (data.sent !== undefined) ? data.sent : 'recipients';
-      addToast(`<strong>Test sent</strong><br/>Sent to ${sent} recipient(s)`, 'success');
+      addToast(`<strong>Test sent</strong><br/>Sent to ${escapeHtml(sent)} recipient(s)`, 'success');
     }
   } catch (error) {
   console.error('Error sending test email:', error);
   const msg = (error as any)?.message || String(error);
-  addToast(`<strong>Error</strong><br/>${msg}`, 'error');
+  addToast(`<strong>Error</strong><br/>${escapeHtml(msg)}`, 'error');
   } finally {
     testSending.value = false;
   }

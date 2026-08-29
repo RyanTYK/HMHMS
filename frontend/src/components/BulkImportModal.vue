@@ -242,7 +242,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useMonitorsStore } from '../stores/monitors';
-import { addToast } from '../composables/useToast';
+import { addToast, escapeHtml } from '../composables/useToast';
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 
@@ -439,7 +439,7 @@ async function importMonitors() {
 
     currentStep.value = 'complete';
   } catch (error: any) {
-    addToast(`Import failed: ${error.message}`, 'error');
+    addToast(`Import failed: ${escapeHtml(error.message)}`, 'error');
     importResults.value = { created: 0, errors: [error.message] };
   } finally {
     importing.value = false;

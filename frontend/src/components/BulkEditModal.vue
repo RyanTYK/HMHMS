@@ -164,7 +164,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { addToast } from '../composables/useToast';
+import { addToast, escapeHtml } from '../composables/useToast';
 import { useMonitorsStore } from '../stores/monitors';
 import axios from 'axios';
 
@@ -247,7 +247,7 @@ async function handleSubmit() {
       emit('close');
     }
   } catch (error: any) {
-    addToast(error?.response?.data?.message || 'Failed to update monitors', 'error');
+    addToast(escapeHtml(error?.response?.data?.message || 'Failed to update monitors'), 'error');
   } finally {
     submitting.value = false;
   }
