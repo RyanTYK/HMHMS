@@ -75,7 +75,7 @@
       </header>
 
       <!-- Loading State -->
-      <div v-if="store.loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
+      <div v-if="store.loading && viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
         <div
           v-for="n in 8"
           :key="n"
@@ -90,6 +90,24 @@
             <div class="h-6 w-14 bg-gray-200 rounded-full"></div>
             <div class="h-6 w-16 bg-gray-200 rounded-full"></div>
           </div>
+        </div>
+      </div>
+      <div v-else-if="store.loading && viewMode === 'list'" class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm animate-pulse">
+        <div class="border-b-2 border-gray-100 px-6 py-3">
+          <div class="h-3 bg-gray-200 rounded w-full max-w-3xl"></div>
+        </div>
+        <div
+          v-for="n in 8"
+          :key="n"
+          class="flex items-center gap-4 px-6 py-4 border-b border-gray-100"
+        >
+          <div class="flex-1">
+            <div class="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+            <div class="h-3 bg-gray-100 rounded w-1/4"></div>
+          </div>
+          <div class="h-6 w-16 bg-gray-200 rounded-full"></div>
+          <div class="h-6 w-14 bg-gray-200 rounded-full"></div>
+          <div class="h-4 w-20 bg-gray-100 rounded"></div>
         </div>
       </div>
 
@@ -680,7 +698,7 @@ const confirmTarget = ref<any>(null);
 const editing = ref<any>(null);
 const sortBy = ref<'name' | 'status' | 'type'>('name');
 const sortOrder = ref<'asc' | 'desc'>('asc');
-const viewMode = ref<'grid' | 'list'>('grid');
+const viewMode = ref<'grid' | 'list'>('list');
 const selectionMode = ref(false);
 const selectedMonitors = ref<string[]>([]);
 const submitting = ref(false);
@@ -1099,20 +1117,28 @@ onMounted(async () => {
             previousStatuses.value.set(newMonitor.id, newMonitor.last_status);
           }
         }
-        
-        store.personal.monitors = data.data;
-        
-        // Re-enrich sparklines for all monitors
-        for (const m of store.items) {
+
+        // Carry over each monitor's existing sparkline immediately so cards
+        // don't flash to an empty chart the instant the array is replaced -
+        // the previous version dropped sparkline data on every SSE update
+        // and then refetched it one monitor at a time (sequential awaits),
+        // so every card visibly flickered blank and repopulated at a
+        // different moment. Fetching in parallel and updating in place
+        // (instead of replacing the array again) keeps updates smooth.
+        const existingSparklines = new Map(store.items.map((m: any) => [m.id, (m as any).sparkline]));
+        store.personal.monitors = data.data.map((m: any) => ({
+          ...m,
+          sparkline: existingSparklines.get(m.id) || []
+        }));
+
+        await Promise.all(store.items.map(async (m: any) => {
           try {
             const logs = await store.logs(m.id, '1h');
-            (m as any).sparkline = logs.map((l: any) => l.response_time_ms || 0);
-            console.log(`SSE Update - Monitor ${m.name}: status=${m.last_status}, last_check=${m.last_check}, sparkline_length=${(m as any).sparkline.length}`);
+            m.sparkline = logs.map((l: any) => l.response_time_ms || 0);
           } catch (error) {
             console.warn(`Failed to fetch sparkline for monitor ${m.id}:`, error);
-            (m as any).sparkline = [];
           }
-        }
+        }));
       }
     } catch (error) {
       console.error('Error parsing SSE message:', error);

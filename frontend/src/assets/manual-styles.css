@@ -1,12 +1,5 @@
 /* Manual CSS styles for when Tailwind isn't working properly */
 
-/* Reset and base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 body {
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   color: #1e293b;

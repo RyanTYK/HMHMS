@@ -12,12 +12,6 @@
   --border: #e2e8f0;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 body {
   background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
   color: var(--text-primary);
