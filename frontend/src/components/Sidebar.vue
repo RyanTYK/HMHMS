@@ -61,7 +61,7 @@
     <!-- Bottom Section -->
     <div class="sidebar-bottom">
       <!-- Settings -->
-      <router-link to="/settings" class="bottom-link">
+      <router-link to="/settings" class="bottom-link" active-class="active">
         <svg class="bottom-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.205a.75.75 0 011.5 0v1.04a7.5 7.5 0 013.03 1.26l.735-.735a.75.75 0 111.06 1.06l-.735.735a7.5 7.5 0 011.26 3.03h1.04a.75.75 0 010 1.5h-1.04a7.5 7.5 0 01-1.26 3.03l.735.735a.75.75 0 11-1.06 1.06l-.735-.735a7.5 7.5 0 01-3.03 1.26v1.04a.75.75 0 01-1.5 0v-1.04a7.5 7.5 0 01-3.03-1.26l-.735.735a.75.75 0 11-1.06-1.06l.735-.735a7.5 7.5 0 01-1.26-3.03H4.205a.75.75 0 010-1.5h1.04a7.5 7.5 0 011.26-3.03l-.735-.735a.75.75 0 111.06-1.06l.735.735a7.5 7.5 0 013.03-1.26v-1.04zM12 9.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
         </svg>
@@ -349,6 +349,24 @@ function handleLogout() {
 .bottom-link:hover {
   background-color: #fae7f3;
   color: #cc1389;
+}
+
+.bottom-link.active {
+  background-color: transparent;
+  color: #8f0d60;
+  font-weight: 500;
+  position: relative;
+}
+
+.bottom-link.active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #cc1389;
+  border-radius: 0 2px 2px 0;
 }
 
 .bottom-link:hover .user-name-bottom {

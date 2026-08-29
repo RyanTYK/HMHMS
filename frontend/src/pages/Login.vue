@@ -33,7 +33,7 @@
             ref="emailInput"
             v-model="email"
             type="email"
-            placeholder="Email Adress"
+            placeholder="Email Address"
             @keydown.enter.prevent="focusPassword"
             @blur="markFieldTouched('email')"
             class="flex-1 bg-transparent text-white outline-none py-4 placeholder-gray-400 border-none focus:ring-0 appearance-none rounded-none" style="border:none;outline:none;box-shadow:none;border-radius:0;background:transparent;"
