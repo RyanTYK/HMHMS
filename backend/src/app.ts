@@ -84,7 +84,11 @@ app.use('/api/bulk-import', bulkImportRoutes);
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
 	console.error('[API] Unhandled route error:', err?.stack || err?.message || err);
 	if (res.headersSent) return;
-	res.status(500).json({ error: err?.message || 'Internal server error' });
+	// Log the real error above; don't forward it to the client. Unlike the
+	// deliberate, safe messages controllers return for expected failures
+	// ("Monitor not found", etc.), anything reaching this catch-all is by
+	// definition unexpected and may be a raw DB/driver error.
+	res.status(500).json({ error: 'Internal server error' });
 });
 
 // Initialize DB and start server if run directly

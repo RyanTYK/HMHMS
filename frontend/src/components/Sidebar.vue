@@ -83,16 +83,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useNotificationsStore } from '../stores/notifications';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const notificationsStore = useNotificationsStore();
 
 const isMobileOpen = ref(false);
-const unreadCount = ref(0); // TODO: Connect to notifications store
+const unreadCount = computed(() => notificationsStore.unreadCount);
+
+onMounted(() => {
+  notificationsStore.fetchUnreadCount();
+});
 
 const userName = computed(() => authStore.user?.name || authStore.user?.email || '');
 

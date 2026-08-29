@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia';
 import { useAuthStore } from './auth';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
 export enum NotificationType {
   ALERT = 'alert',
   SYSTEM = 'system'
@@ -53,7 +51,7 @@ export const useNotificationsStore = defineStore('notifications', {
         const authStore = useAuthStore();
         const token = authStore.token;
 
-        const response = await fetch(`${API_URL}/api/notifications`, {
+        const response = await fetch(`/api/notifications`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -78,7 +76,7 @@ export const useNotificationsStore = defineStore('notifications', {
         const authStore = useAuthStore();
         const token = authStore.token;
 
-        const response = await fetch(`${API_URL}/api/notifications/unread/count`, {
+        const response = await fetch(`/api/notifications/unread/count`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -100,7 +98,7 @@ export const useNotificationsStore = defineStore('notifications', {
         const authStore = useAuthStore();
         const token = authStore.token;
 
-        const response = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+        const response = await fetch(`/api/notifications/${notificationId}/read`, {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -128,7 +126,7 @@ export const useNotificationsStore = defineStore('notifications', {
         const authStore = useAuthStore();
         const token = authStore.token;
 
-        const response = await fetch(`${API_URL}/api/notifications/read-all`, {
+        const response = await fetch(`/api/notifications/read-all`, {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${token}`,
@@ -153,7 +151,7 @@ export const useNotificationsStore = defineStore('notifications', {
         const authStore = useAuthStore();
         const token = authStore.token;
 
-        const response = await fetch(`${API_URL}/api/notifications/${notificationId}`, {
+        const response = await fetch(`/api/notifications/${notificationId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,

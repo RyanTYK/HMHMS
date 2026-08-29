@@ -114,8 +114,7 @@ export const useAuthStore = defineStore('auth', {
     
     // Microsoft SSO methods
     initiateMicrosoftSSO() {
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      window.location.href = `${backendUrl}/api/auth/microsoft`;
+      window.location.href = '/api/auth/microsoft';
     },
     
     async setTokenAndFetchUser(token: string) {
