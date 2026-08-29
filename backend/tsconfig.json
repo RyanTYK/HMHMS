@@ -14,9 +14,6 @@
   "include": ["src"],
   "exclude": [
     "node_modules",
-    "dist",
-    // Broken helper script: imports ../models/EmailNotification, which does not
-    // exist. Excluded so it cannot break the production build.
-    "src/scripts/diagnose-email.ts"
+    "dist"
   ]
 }

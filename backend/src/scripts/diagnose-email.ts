@@ -1,7 +1,6 @@
 import { AppDataSource } from '../utils/data-source';
 import { Monitor } from '../models/Monitor';
 import { User } from '../models/User';
-import { EmailNotification } from '../models/EmailNotification';
 import { Notification } from '../models/Notification';
 import { verifySMTPTransport, sendTestNotificationEmail } from '../services/checkEngine';
 import * as dotenv from 'dotenv';
