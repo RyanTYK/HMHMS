@@ -313,6 +313,18 @@ export const bulkImport = async (req: Request, res: Response) => {
   res.json(results);
 };
 
+// Quotes a CSV field and neutralizes formula injection: a cell whose first
+// character is =, +, -, @, tab, or CR is interpreted as a formula by
+// Excel/Sheets when the file is opened, and name/target/tags/dependency/
+// email_recipients are all user-controlled. Also doubles any embedded
+// quote, since these values previously weren't escaped at all (a monitor
+// name containing a `"` would corrupt the CSV structure).
+function csvCell(value: unknown): string {
+  let str = String(value ?? '');
+  if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
 export const exportCSV = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
@@ -320,7 +332,7 @@ export const exportCSV = async (req: Request, res: Response) => {
 
   const csvHeader = 'name,type,target,port,interval_seconds,timeout_ms,active,is_paused,tags,dependency,email_recipients,notify_owner,retry_interval,max_retries,notification_resend_after\n';
   const csvRows = monitors.map(m =>
-    `"${m.name}","${m.type}","${m.target}",${m.port || ''},${m.interval_seconds},${m.timeout_ms},${m.active},${m.is_paused || false},"${m.tags || ''}","${m.dependency || ''}","${m.email_recipients || ''}",${m.notify_owner ?? true},${m.retry_interval || 60},${m.max_retries || 3},${m.notification_resend_after || 180}`
+    `${csvCell(m.name)},${csvCell(m.type)},${csvCell(m.target)},${m.port || ''},${m.interval_seconds},${m.timeout_ms},${m.active},${m.is_paused || false},${csvCell(m.tags || '')},${csvCell(m.dependency || '')},${csvCell(m.email_recipients || '')},${m.notify_owner ?? true},${m.retry_interval || 60},${m.max_retries || 3},${m.notification_resend_after || 180}`
   ).join('\n');
 
   const csv = csvHeader + csvRows;
