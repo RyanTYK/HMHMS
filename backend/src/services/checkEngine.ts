@@ -7,12 +7,17 @@ import { Notification } from '../models/Notification';
 import { User } from '../models/User';
 import { MonitorDependency } from '../models/MonitorDependency';
 import { notificationService } from './notificationService';
-import nodemailer from 'nodemailer';
+import { transporter } from './emailService';
+import { escapeHtml } from '../utils/htmlEscape';
 import axios from 'axios';
 import net from 'net';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { sseManager } from '../utils/sseManager';
+
+// The shared SMTP verify/transporter live in emailService.ts; re-exported
+// here since callers already import verifySMTPTransport from this module.
+export { verifySMTPTransport } from './emailService';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -34,32 +39,6 @@ function isSafeHost(target: string): boolean {
 function isSafeUncPath(target: string): boolean {
   if (!target || target.length > 255) return false;
   return UNC_RE.test(target);
-}
-
-const smtpPort = Number(process.env.SMTP_PORT) || 25;
-const smtpSecure = process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : smtpPort === 465;
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'localhost',
-  port: smtpPort,
-  secure: smtpSecure, // true for 465, false for 587/25
-  requireTLS: smtpPort === 587, // STARTTLS for 587
-  auth: process.env.SMTP_USER ? {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  } : undefined,
-  connectionTimeout: 15000
-}, {
-  logger: process.env.SMTP_DEBUG === 'true',
-  debug: process.env.SMTP_DEBUG === 'true'
-});
-
-export async function verifySMTPTransport(): Promise<{ ok: boolean; error?: any }> {
-  try {
-    await transporter.verify();
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: (err as any)?.message || err };
-  }
 }
 
 // Check VPN dependency
@@ -489,8 +468,8 @@ export async function sendNotification(monitor: Monitor, event_type: 'down' | 'u
         <p>Dear User,</p>
         <p>The following monitor has changed status:</p>
         <ul>
-          <li><strong>Name:</strong> ${monitor.name}</li>
-          <li><strong>Target:</strong> ${monitor.target}</li>
+          <li><strong>Name:</strong> ${escapeHtml(monitor.name)}</li>
+          <li><strong>Target:</strong> ${escapeHtml(monitor.target)}</li>
           <li><strong>Status:</strong> <span style="color:${event_type === 'down' ? '#d32f2f' : '#388e3c'}; font-weight:bold;">${event_type.toUpperCase()}</span></li>
           <li><strong>Time:</strong> ${new Date().toLocaleString()}</li>
         </ul>
@@ -520,8 +499,8 @@ export async function sendTestNotificationEmail(monitor: Monitor, email: string)
         <h2 style="color:#2d6cdf;">HMHMS Test Notification</h2>
         <p>This is a <strong>test notification</strong> for the following monitor:</p>
         <ul>
-          <li><strong>Name:</strong> ${monitor.name}</li>
-          <li><strong>Target:</strong> ${monitor.target}</li>
+          <li><strong>Name:</strong> ${escapeHtml(monitor.name)}</li>
+          <li><strong>Target:</strong> ${escapeHtml(monitor.target)}</li>
         </ul>
         <p>You will receive alerts at this email address when the monitor status changes.</p>
         <p style="color:#888;">This is a test message - no action required.</p>

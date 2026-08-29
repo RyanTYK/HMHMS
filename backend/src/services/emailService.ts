@@ -1,15 +1,35 @@
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import { escapeHtml } from '../utils/htmlEscape';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-  auth: {
+// The single shared SMTP transporter for the whole backend (checkEngine.ts
+// used to build its own separate one from the same env vars - two
+// independent connections doing the same job).
+const smtpPort = Number(process.env.SMTP_PORT) || 25;
+const smtpSecure = process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : smtpPort === 465;
+export const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'localhost',
+  port: smtpPort,
+  secure: smtpSecure, // true for 465, false for 587/25
+  requireTLS: smtpPort === 587, // STARTTLS for 587
+  auth: process.env.SMTP_USER ? {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+    pass: process.env.SMTP_PASS
+  } : undefined,
+  connectionTimeout: 15000
+}, {
+  logger: process.env.SMTP_DEBUG === 'true',
+  debug: process.env.SMTP_DEBUG === 'true'
 });
+
+export async function verifySMTPTransport(): Promise<{ ok: boolean; error?: any }> {
+  try {
+    await transporter.verify();
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+}
 
 export const generateVerificationToken = (): string => {
   return crypto.randomBytes(32).toString('hex');
@@ -69,7 +89,7 @@ export const sendVerificationEmail = async (email: string, token: string, name: 
                     <!-- Greeting -->
                     <div style="text-align: center; margin-bottom: 35px;">
                       <p style="color: #1f2937; font-size: 18px; line-height: 1.6; margin: 0;">
-                        Hi <strong style="color: #8b5cf6; font-weight: 700;">${name}</strong>,
+                        Hi <strong style="color: #8b5cf6; font-weight: 700;">${escapeHtml(name)}</strong>,
                       </p>
                     </div>
                     
