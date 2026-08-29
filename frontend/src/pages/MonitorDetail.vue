@@ -32,9 +32,33 @@
     </div>
     
     <!-- Loading state -->
-    <div v-if="loading" class="flex flex-col items-center justify-center py-16">
-      <div class="w-16 h-16 border-4 border-brand border-t-transparent rounded-full animate-spin mb-4"></div>
-      <p class="text-lg text-gray-600">Loading monitor details...</p>
+    <div v-if="loading" class="animate-pulse">
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="flex items-center gap-4">
+          <div class="h-6 bg-gray-200 rounded w-48"></div>
+          <div class="h-8 bg-gray-200 rounded-full w-20"></div>
+          <div class="h-8 bg-gray-200 rounded-full w-20"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div v-for="n in 3" :key="n" class="bg-white rounded-lg shadow-md p-4">
+          <div class="h-4 bg-gray-200 rounded w-24 mb-3"></div>
+          <div class="h-6 bg-gray-200 rounded w-32"></div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="h-5 bg-gray-200 rounded w-48 mb-4"></div>
+        <div class="h-60 bg-gray-100 rounded"></div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="h-5 bg-gray-200 rounded w-40 mb-6"></div>
+        <div class="space-y-3">
+          <div v-for="n in 5" :key="n" class="h-8 bg-gray-100 rounded"></div>
+        </div>
+      </div>
     </div>
     
     <div v-else>

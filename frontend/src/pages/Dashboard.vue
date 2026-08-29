@@ -75,9 +75,22 @@
       </header>
 
       <!-- Loading State -->
-      <div v-if="store.loading" class="bg-white rounded-lg shadow-md overflow-hidden p-16 text-center">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-600 mb-4"></div>
-        <p class="text-gray-600">Loading monitors...</p>
+      <div v-if="store.loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-pulse">
+        <div
+          v-for="n in 8"
+          :key="n"
+          class="bg-white rounded-lg border border-gray-200 overflow-hidden p-4"
+        >
+          <div class="mb-3">
+            <div class="h-5 bg-gray-200 rounded w-2/3 mb-2"></div>
+            <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+          </div>
+          <div class="h-20 mb-6 bg-gray-100 rounded"></div>
+          <div class="flex items-center gap-2.5 pt-3">
+            <div class="h-6 w-14 bg-gray-200 rounded-full"></div>
+            <div class="h-6 w-16 bg-gray-200 rounded-full"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Filters and View Toggle -->
