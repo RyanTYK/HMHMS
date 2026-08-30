@@ -27,10 +27,17 @@
       </header>
 
       <div v-if="!loading && notificationsStore.notifications.length > 0" class="flex items-center gap-3 mb-4">
-        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" class="w-4 h-4 shrink-0 rounded border-gray-300 accent-pink-600 cursor-pointer" />
-          Select All
-        </label>
+        <button
+          @click="toggleSelectAll"
+          :class="[
+            'px-3 py-1.5 text-sm rounded-lg transition-all font-medium border',
+            allSelected
+              ? 'text-pink-700 bg-pink-50 border-pink-200 hover:bg-pink-100'
+              : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-100'
+          ]"
+        >
+          {{ allSelected ? 'Deselect All' : 'Select All' }}
+        </button>
         <button
           :disabled="selectedIds.length === 0"
           @click="markSelectedAsRead"
@@ -49,31 +56,44 @@
 
       <div v-if="!loading && notificationsStore.notifications.length > 0" class="space-y-4">
         <div
-          v-for="notification in notificationsStore.notifications"
-          :key="notification.id"
+          v-for="group in groupedNotifications"
+          :key="group.ids[0]"
           :class="[
-            'bg-white rounded-lg shadow-md border transition-all hover:shadow-lg',
-            notification.is_read ? 'border-gray-200' : 'bg-pink-50'
+            'rounded-lg shadow-md border transition-all hover:shadow-lg',
+            isGroupSelected(group) ? 'ring-2 ring-pink-400' : '',
+            group.is_read ? 'bg-white border-gray-200' : 'bg-pink-50'
           ]"
-          :style="!notification.is_read ? 'border-color: #f0b8dc;' : ''"
+          :style="!group.is_read ? 'border-color: #f0b8dc;' : ''"
         >
           <div class="p-4">
             <div class="flex items-start justify-between">
               <div class="flex items-start gap-4">
-                <input
-                  type="checkbox"
-                  :checked="selectedIds.includes(notification.id)"
-                  @change="toggleSelect(notification.id)"
-                  class="w-4 h-4 shrink-0 self-center rounded border-gray-300 accent-pink-600 cursor-pointer"
-                />
+                <label class="relative flex items-center justify-center w-5 h-5 shrink-0 self-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    :checked="isGroupSelected(group)"
+                    @change="toggleGroupSelect(group)"
+                    class="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <span
+                    :class="[
+                      'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors',
+                      isGroupSelected(group) ? 'bg-pink-600 border-pink-600' : 'bg-white border-gray-300 hover:border-pink-400'
+                    ]"
+                  >
+                    <svg v-if="isGroupSelected(group)" class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </span>
+                </label>
                 <div
                   :class="[
-                    'w-12 h-12 rounded-full flex items-center justify-center',
-                    notification.type === 'alert' ? 'bg-gradient-to-br from-red-100 to-orange-100' : 'bg-gradient-to-br from-gray-100 to-gray-200'
+                    'w-12 h-12 rounded-full flex items-center justify-center shrink-0 self-center',
+                    group.type === 'alert' ? 'bg-gradient-to-br from-red-100 to-orange-100' : 'bg-gradient-to-br from-gray-100 to-gray-200'
                   ]"
                 >
                   <svg
-                    v-if="notification.type === 'alert'"
+                    v-if="group.type === 'alert'"
                     width="24"
                     height="24"
                     viewBox="0 0 24 24"
@@ -92,15 +112,20 @@
                   </svg>
                 </div>
                 <div class="flex-1">
-                  <h3 class="text-lg font-semibold text-gray-900 mb-1">{{ notification.title }}</h3>
-                  <p class="text-gray-600 text-sm">{{ notification.message }}</p>
-                  <span class="text-xs text-gray-500 mt-2 inline-block">{{ formatDate(notification.created_at) }}</span>
+                  <h3 class="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    {{ group.title }}
+                    <span v-if="group.count > 1" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">×{{ group.count }}</span>
+                  </h3>
+                  <p class="text-gray-600 text-sm">{{ group.message }}</p>
+                  <span class="text-xs text-gray-500 mt-2 inline-block">
+                    {{ group.count > 1 ? 'Latest: ' : '' }}{{ formatDate(group.created_at) }}
+                  </span>
                 </div>
               </div>
               <div class="flex items-center gap-3">
                 <button
-                  v-if="!notification.is_read"
-                  @click="markAsRead(notification.id)"
+                  v-if="!group.is_read"
+                  @click="markGroupAsRead(group)"
                   class="text-gray-400 hover:text-pink-600"
                   title="Mark as read"
                 >
@@ -109,7 +134,7 @@
                   </svg>
                 </button>
                 <button
-                  @click="deleteNotification(notification.id)"
+                  @click="deleteGroup(group)"
                   class="text-gray-400 hover:text-red-600"
                   title="Delete"
                 >
@@ -181,10 +206,42 @@ function toggleSelectAll() {
     : notificationsStore.notifications.map(n => n.id);
 }
 
-function toggleSelect(id: number) {
-  selectedIds.value = selectedIds.value.includes(id)
-    ? selectedIds.value.filter(i => i !== id)
-    : [...selectedIds.value, id];
+interface NotificationGroup {
+  ids: number[];
+  type: string;
+  title: string;
+  message: string;
+  created_at: string;
+  is_read: boolean;
+  count: number;
+}
+
+// Repeat "down" reminders for the same monitor create near-identical rows -
+// collapse consecutive ones sharing a title+message into a single card with
+// a count, rather than showing each reminder as its own full-height card.
+const groupedNotifications = computed<NotificationGroup[]>(() => {
+  const groups: NotificationGroup[] = [];
+  for (const n of notificationsStore.notifications) {
+    const last = groups[groups.length - 1];
+    if (last && last.title === n.title && last.message === n.message) {
+      last.ids.push(n.id);
+      last.count++;
+      last.is_read = last.is_read && n.is_read;
+    } else {
+      groups.push({ ids: [n.id], type: n.type, title: n.title, message: n.message, created_at: n.created_at, is_read: n.is_read, count: 1 });
+    }
+  }
+  return groups;
+});
+
+function isGroupSelected(group: NotificationGroup) {
+  return group.ids.every(id => selectedIds.value.includes(id));
+}
+
+function toggleGroupSelect(group: NotificationGroup) {
+  selectedIds.value = isGroupSelected(group)
+    ? selectedIds.value.filter(id => !group.ids.includes(id))
+    : [...new Set([...selectedIds.value, ...group.ids])];
 }
 
 const markSelectedAsRead = async () => {
@@ -221,9 +278,9 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-const markAsRead = async (notificationId: number) => {
+const markGroupAsRead = async (group: NotificationGroup) => {
   try {
-    await notificationsStore.markAsRead(notificationId);
+    await Promise.all(group.ids.map(id => notificationsStore.markAsRead(id)));
   } catch (error) {
     console.error('Failed to mark as read:', error);
   }
@@ -246,9 +303,10 @@ const clearAllNotifications = async () => {
   }
 };
 
-const deleteNotification = async (notificationId: number) => {
+const deleteGroup = async (group: NotificationGroup) => {
   try {
-    await notificationsStore.deleteNotification(notificationId);
+    await Promise.all(group.ids.map(id => notificationsStore.deleteNotification(id)));
+    selectedIds.value = selectedIds.value.filter(id => !group.ids.includes(id));
   } catch (error) {
     console.error('Failed to delete notification:', error);
   }
@@ -266,16 +324,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* manual-styles.css sets a global unlayered `input, select, textarea { width:
-   100%; padding: .75rem 1rem; ... }` reset that Tailwind's layered utility
-   classes (w-4, p-0, etc.) can never win against regardless of specificity -
-   unlayered CSS always beats layered CSS. !important is the only override. */
-input[type="checkbox"] {
-  width: 16px !important;
-  height: 16px !important;
-  padding: 0 !important;
-  border: 1px solid #d1d5db !important;
-  border-radius: 4px !important;
-  flex-shrink: 0;
+/* manual-styles.css has its own unlayered, hardcoded `.shadow-md { box-shadow:
+   ... }` (a pre-Tailwind-v4 leftover) that always wins the box-shadow property
+   over Tailwind's layered shadow-md/ring-2, since Tailwind composites both
+   into a single box-shadow declaration that this rule fully replaces. Restate
+   both effects together with !important - same pattern as the checkbox fix. */
+.ring-2.ring-pink-400 {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 0 0 2px #f472b6 !important;
 }
 </style>

@@ -283,7 +283,7 @@ const form = reactive<Form>({
   dependency: null,
   email_recipients: null,
   notify_alert: true,
-  notify_owner: true,
+  notify_owner: false,
 });
 
 const isEdit = computed(() => Boolean(props.value?.id));

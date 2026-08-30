@@ -429,7 +429,7 @@ async function parseAndPreview() {
     monitor.interval_seconds = monitor.interval_seconds || 60;
     monitor.timeout_ms = monitor.timeout_ms || 5000;
     monitor.active = monitor.active !== undefined ? monitor.active : true;
-    monitor.notify_owner = true;
+    monitor.notify_owner = false;
 
     monitors.push(monitor);
   }
