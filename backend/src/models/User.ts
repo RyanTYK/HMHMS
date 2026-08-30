@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
 
 @Entity('users')
 export class User {
@@ -23,6 +23,7 @@ export class User {
   @Column({ type: 'boolean', default: false })
   email_verified!: boolean;
 
+  @Index('idx_users_verification_token')
   @Column({ type: 'varchar', length: 255, nullable: true })
   verification_token!: string | null;
 

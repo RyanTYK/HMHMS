@@ -31,7 +31,7 @@ The complete guide walks you through:
 - Real‑Time Updates: SSE streams for dashboards and details
 - Historical Data: check logs, uptime %, response-time sparklines
 - Data Retention: scheduled cleanup with cron-like jobs
-- Notifications: email + in-app, with future browser notifications
+- Notifications: email, in-app, and browser notifications
 
 
 ## Tech Stack

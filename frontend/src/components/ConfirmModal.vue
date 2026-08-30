@@ -1,7 +1,6 @@
 <template>
   <div class="modal-overlay" @click.self="emit('close')">
     <div class="confirm-modal">
-      <!-- Animated Warning Icon -->
       <div class="icon-container">
         <div class="warning-circle">
           <svg class="warning-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -13,14 +12,12 @@
         <div class="warning-pulse"></div>
       </div>
 
-      <!-- Content -->
       <div class="modal-content">
         <h2 class="modal-title">{{ title || 'Confirm Deletion' }}</h2>
         <p class="modal-message">{{ message }}</p>
         <p v-if="!hideWarning" class="modal-warning">This action cannot be undone.</p>
       </div>
 
-      <!-- Action Buttons -->
       <div class="modal-actions">
         <button 
           v-if="showCancel"
@@ -52,9 +49,8 @@
 </template>
 
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   title?: string;
-  subtitle?: string;
   message: string;
   confirmText?: string;
   confirmClass?: 'default' | 'danger';

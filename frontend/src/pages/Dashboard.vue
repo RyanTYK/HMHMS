@@ -9,15 +9,41 @@
             <p class="text-gray-600">Monitor your services and infrastructure in real-time</p>
           </div>
           <div class="flex gap-3">
-            <button 
-              class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg transition-all font-medium border border-gray-200 flex items-center gap-2"
-              @click="exportCSV"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export CSV
-            </button>
+            <div class="relative">
+              <button
+                class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg transition-all font-medium border border-gray-200 flex items-center gap-2"
+                @click="toggleExportDropdown"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export CSV
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9" stroke-width="2"></polyline>
+                </svg>
+              </button>
+              <div
+                v-if="showExportDropdown"
+                class="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]"
+              >
+                <button
+                  @click="exportCSVAll"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg"
+                >
+                  Export All ({{ store.items.length }})
+                </button>
+                <button
+                  @click="exportCSVSelected"
+                  :disabled="selectedMonitors.length === 0"
+                  :class="[
+                    'w-full text-left px-4 py-2 text-sm last:rounded-b-lg',
+                    selectedMonitors.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'
+                  ]"
+                >
+                  Export Selected ({{ selectedMonitors.length }})
+                </button>
+              </div>
+            </div>
             <button 
               class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg transition-all font-medium border border-gray-200 flex items-center gap-2"
               @click="openBulkImport"
@@ -41,7 +67,12 @@
 
         <!-- Quick Stats -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div class="bg-white rounded-lg p-6 border border-gray-200 transition-all hover:shadow-lg">
+          <div
+            class="bg-white rounded-lg p-6 border transition-all hover:shadow-lg cursor-pointer"
+            :class="filterStatus === 'up' ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
+            @click="toggleStatusFilter('up')"
+            :title="filterStatus === 'up' ? 'Showing UP only - click to clear' : 'Show UP monitors only'"
+          >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-600">UP</span>
               <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +82,12 @@
             <div class="text-3xl font-bold text-gray-500">{{ upCount }}</div>
           </div>
 
-          <div class="bg-white rounded-lg p-6 border border-gray-200 transition-all hover:shadow-lg">
+          <div
+            class="bg-white rounded-lg p-6 border transition-all hover:shadow-lg cursor-pointer"
+            :class="filterStatus === 'down' ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
+            @click="toggleStatusFilter('down')"
+            :title="filterStatus === 'down' ? 'Showing DOWN only - click to clear' : 'Show DOWN monitors only'"
+          >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-600">DOWN</span>
               <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +97,12 @@
             <div class="text-3xl font-bold text-gray-500">{{ downCount }}</div>
           </div>
 
-          <div class="bg-white rounded-lg p-6 border border-gray-200 transition-all hover:shadow-lg">
+          <div
+            class="bg-white rounded-lg p-6 border transition-all hover:shadow-lg cursor-pointer"
+            :class="filterState === 'paused' ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
+            @click="togglePausedFilter"
+            :title="filterState === 'paused' ? 'Showing paused only - click to clear' : 'Show paused monitors only'"
+          >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-600">PAUSED</span>
               <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,11 +231,17 @@
                 >
                   UP
                 </button>
-                <button 
+                <button
                   @click="filterStatus = 'down'; showStatusDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 last:rounded-b-lg"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   DOWN
+                </button>
+                <button
+                  @click="filterStatus = 'unknown'; showStatusDropdown = false"
+                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 last:rounded-b-lg"
+                >
+                  UNKNOWN
                 </button>
               </div>
             </div>
@@ -246,26 +293,13 @@
 
           <div class="flex gap-4 items-center">
             <div class="flex gap-2 items-center">
-              <button 
-                v-if="selectedMonitors.length > 0"
-                @click="bulkDelete"
-                :class="[
-                  'flex items-center justify-center w-10 h-10 bg-white border rounded-lg transition-all',
-                  'border-gray-300 text-gray-600 hover:border-pink-500 hover:text-pink-600 hover:bg-pink-50'
-                ]"
-                :title="`Delete ${selectedMonitors.length} monitor${selectedMonitors.length > 1 ? 's' : ''}`"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-              <button 
-                v-if="selectionMode && filteredMonitors.length > 0"
+              <button
+                v-if="filteredMonitors.length > 0"
                 @click="selectAllFiltered"
                 :class="[
-                  'flex items-center justify-center w-10 h-10 bg-white border rounded-lg transition-all',
-                  allFilteredSelected 
-                    ? 'bg-pink-50 border-pink-500 text-pink-600' 
+                  'relative flex items-center justify-center w-10 h-10 bg-white border rounded-lg transition-all',
+                  allFilteredSelected
+                    ? 'bg-pink-50 border-pink-500 text-pink-600'
                     : 'border-gray-300 text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300'
                 ]"
                 :title="allFilteredSelected ? 'Deselect All' : 'Select All'"
@@ -274,32 +308,45 @@
                   <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l4 4l9 -9" />
                   <path stroke-linecap="round" stroke-linejoin="round" d="M2 12l4 4m4 -4l4 -4" />
                 </svg>
+                <!-- Absolutely positioned so it overlays without ever affecting
+                     this button's own size/position or pushing its siblings. -->
+                <span
+                  v-if="selectedMonitors.length > 0"
+                  class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-pink-600 text-white text-[10px] font-semibold flex items-center justify-center leading-none"
+                >
+                  {{ selectedMonitors.length }}
+                </span>
               </button>
-              <button 
-                v-if="selectedMonitors.length > 0"
-                @click="openBulkEdit"
+              <button
+                v-if="filteredMonitors.length > 0"
+                @click="bulkDelete"
+                :disabled="selectedMonitors.length === 0"
                 :class="[
                   'flex items-center justify-center w-10 h-10 bg-white border rounded-lg transition-all',
-                  'border-gray-300 text-gray-600 hover:border-pink-500 hover:text-pink-600 hover:bg-pink-50'
+                  selectedMonitors.length === 0
+                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                    : 'border-gray-300 text-gray-600 hover:border-pink-500 hover:text-pink-600 hover:bg-pink-50'
                 ]"
-                :title="`Edit ${selectedMonitors.length} monitor${selectedMonitors.length > 1 ? 's' : ''}`"
+                :title="selectedMonitors.length > 0 ? `Delete ${selectedMonitors.length} monitor${selectedMonitors.length > 1 ? 's' : ''}` : 'Select monitors to delete'"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <button
+                v-if="filteredMonitors.length > 0"
+                @click="openBulkEdit"
+                :disabled="selectedMonitors.length === 0"
+                :class="[
+                  'flex items-center justify-center w-10 h-10 bg-white border rounded-lg transition-all',
+                  selectedMonitors.length === 0
+                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                    : 'border-gray-300 text-gray-600 hover:border-pink-500 hover:text-pink-600 hover:bg-pink-50'
+                ]"
+                :title="selectedMonitors.length > 0 ? `Edit ${selectedMonitors.length} monitor${selectedMonitors.length > 1 ? 's' : ''}` : 'Select monitors to edit'"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-              </button>
-              <button 
-                @click="toggleSelectionMode"
-                :class="[
-                  'flex items-center justify-center w-10 h-10 bg-white border rounded-lg transition-all',
-                  selectionMode 
-                    ? 'bg-pink-50 border-pink-500 text-pink-600' 
-                    : 'border-gray-300 text-gray-600 hover:bg-pink-50 hover:text-pink-600 hover:border-pink-300'
-                ]"
-                :title="selectionMode ? 'Cancel Edit Mode' : 'Edit Mode'"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </button>
               <div class="flex gap-0 items-center">
@@ -373,20 +420,24 @@
           :key="monitor.id"
           :class="[
             'bg-white rounded-lg border overflow-hidden transition-all cursor-pointer relative',
-            selectionMode && isSelected(monitor.id) 
-              ? 'border-pink-500 shadow-lg shadow-pink-200 ring-2 ring-pink-300' 
+            isSelected(monitor.id)
+              ? 'border-pink-500 shadow-lg shadow-pink-200 ring-2 ring-pink-300'
               : 'border-gray-200 hover:shadow-lg hover:border-pink-300',
             ((monitor as any).is_paused || (monitor as any).active === false) ? 'opacity-60' : ''
           ]"
-          @click="handleCardClick(monitor)"
+          @click="navigateToMonitor(monitor.id)"
         >
-          <div v-if="selectionMode && isSelected(monitor.id)" class="absolute top-2 right-2 z-10">
-            <div class="w-6 h-6 bg-pink-600 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-          </div>
+          <button
+            type="button"
+            class="absolute top-2 right-2 z-10 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all"
+            :class="isSelected(monitor.id) ? 'bg-pink-600 border-pink-600' : 'bg-white/90 border-gray-300 hover:border-pink-400'"
+            :title="isSelected(monitor.id) ? 'Deselect' : 'Select'"
+            @click.stop="toggleSelection(monitor.id)"
+          >
+            <svg v-if="isSelected(monitor.id)" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
           <div class="p-4">
             <div class="flex items-start justify-between mb-3">
               <div class="flex-1 min-w-0">
@@ -438,7 +489,7 @@
                 </div>
               </div>
 
-              <div v-if="!selectionMode" class="flex items-center gap-1.5" @click.stop>
+              <div class="flex items-center gap-1.5" @click.stop>
                 <button 
                   @click="onEdit(monitor)"
                   class="p-1.5 text-gray-700 hover:bg-gray-100 rounded transition-all"
@@ -499,33 +550,33 @@
                 <th class="text-left py-3 px-6 font-medium text-[#7a0b52] text-xs uppercase tracking-wide">
                   Response Time
                 </th>
-                <th v-if="!selectionMode" class="text-left py-3 px-6 font-medium text-[#7a0b52] text-xs uppercase tracking-wide">
+                <th class="text-left py-3 px-6 font-medium text-[#7a0b52] text-xs uppercase tracking-wide">
                   Action
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="monitor in filteredMonitors" 
-                :key="monitor.id" 
+              <tr
+                v-for="monitor in filteredMonitors"
+                :key="monitor.id"
                 :class="[
                   'border-b border-[#f0b8dc] transition-colors cursor-pointer',
-                  selectionMode && isSelected(monitor.id) 
-                    ? 'bg-pink-50 shadow-inner' 
+                  isSelected(monitor.id)
+                    ? 'bg-pink-50 shadow-inner'
                     : 'hover:bg-[#fae7f3]'
                 ]"
-                @click="handleRowClick(monitor)"
+                @click="navigateToMonitor(monitor.id)"
               >
                 <!-- Hostname -->
                 <td class="py-3 px-6">
                   <div class="flex items-center gap-3">
-                    <div v-if="selectionMode" class="flex-shrink-0">
-                      <div 
+                    <div class="flex-shrink-0" @click.stop="toggleSelection(monitor.id)">
+                      <div
                         :class="[
-                          'w-5 h-5 rounded flex items-center justify-center border-2 transition-all',
-                          isSelected(monitor.id) 
-                            ? 'bg-pink-600 border-pink-600' 
-                            : 'border-gray-300 bg-white'
+                          'w-5 h-5 rounded flex items-center justify-center border-2 transition-all cursor-pointer',
+                          isSelected(monitor.id)
+                            ? 'bg-pink-600 border-pink-600'
+                            : 'border-gray-300 bg-white hover:border-pink-400'
                         ]"
                       >
                         <svg v-if="isSelected(monitor.id)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -587,7 +638,7 @@
                 </td>
                 
                 <!-- Actions -->
-                <td v-if="!selectionMode" class="py-3 px-6" @click.stop>
+                <td class="py-3 px-6" @click.stop>
                   <div class="flex items-center gap-1">
                     <button 
                       @click="onEdit(monitor)"
@@ -699,7 +750,6 @@ const editing = ref<any>(null);
 const sortBy = ref<'name' | 'status' | 'type'>('name');
 const sortOrder = ref<'asc' | 'desc'>('asc');
 const viewMode = ref<'grid' | 'list'>('list');
-const selectionMode = ref(false);
 const selectedMonitors = ref<string[]>([]);
 const submitting = ref(false);
 const { setConnection, closeConnection } = useSSE();
@@ -721,29 +771,41 @@ const searchText = ref('');
 const showTypeDropdown = ref(false);
 const showStatusDropdown = ref(false);
 const showStateDropdown = ref(false);
+const showExportDropdown = ref(false);
 
 function toggleTypeDropdown() {
   showTypeDropdown.value = !showTypeDropdown.value;
   showStatusDropdown.value = false;
   showStateDropdown.value = false;
+  showExportDropdown.value = false;
 }
 
 function toggleStatusDropdown() {
   showStatusDropdown.value = !showStatusDropdown.value;
   showTypeDropdown.value = false;
   showStateDropdown.value = false;
+  showExportDropdown.value = false;
 }
 
 function toggleStateDropdown() {
   showStateDropdown.value = !showStateDropdown.value;
   showTypeDropdown.value = false;
   showStatusDropdown.value = false;
+  showExportDropdown.value = false;
+}
+
+function toggleExportDropdown() {
+  showExportDropdown.value = !showExportDropdown.value;
+  showTypeDropdown.value = false;
+  showStatusDropdown.value = false;
+  showStateDropdown.value = false;
 }
 
 function closeAllDropdowns() {
   showTypeDropdown.value = false;
   showStatusDropdown.value = false;
   showStateDropdown.value = false;
+  showExportDropdown.value = false;
 }
 
 function clearFilters() {
@@ -816,13 +878,6 @@ function setSortBy(column: 'name' | 'status' | 'type') {
   }
 }
 
-function toggleSelectionMode() {
-  selectionMode.value = !selectionMode.value;
-  if (!selectionMode.value) {
-    selectedMonitors.value = [];
-  }
-}
-
 function isSelected(monitorId: string) {
   return selectedMonitors.value.includes(monitorId);
 }
@@ -844,30 +899,13 @@ const allFilteredSelected = computed(() => {
 function selectAllFiltered() {
   const filteredIds = filteredMonitors.value.map(m => m.id);
   if (allFilteredSelected.value) {
-    // Deselect all filtered monitors
     selectedMonitors.value = selectedMonitors.value.filter(id => !filteredIds.includes(id));
   } else {
-    // Select all filtered monitors
     const newSelections = filteredIds.filter(id => !selectedMonitors.value.includes(id));
     selectedMonitors.value.push(...newSelections);
   }
 }
 
-function handleCardClick(monitor: any) {
-  if (selectionMode.value) {
-    toggleSelection(monitor.id);
-  } else {
-    navigateToMonitor(monitor.id);
-  }
-}
-
-function handleRowClick(monitor: any) {
-  if (selectionMode.value) {
-    toggleSelection(monitor.id);
-  } else {
-    navigateToMonitor(monitor.id);
-  }
-}
 
 function bulkDelete() {
   if (selectedMonitors.value.length === 0) return;
@@ -883,15 +921,17 @@ function bulkDelete() {
 
 async function confirmBulkDelete() {
   try {
-    for (const monitorId of selectedMonitors.value) {
-      await store.remove(monitorId);
+    const results = await Promise.allSettled(selectedMonitors.value.map(monitorId => store.remove(monitorId)));
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.length - succeeded;
+    if (failed === 0) {
+      addToast(`Successfully deleted ${succeeded} monitor${succeeded > 1 ? 's' : ''}`, 'success');
+    } else if (succeeded === 0) {
+      addToast(`Failed to delete ${failed} monitor${failed > 1 ? 's' : ''}`, 'error');
+    } else {
+      addToast(`Deleted ${succeeded}, failed to delete ${failed}`, 'error');
     }
-    const count = selectedMonitors.value.length;
-    addToast(`Successfully deleted ${count} monitor${count > 1 ? 's' : ''}`, 'success');
     selectedMonitors.value = [];
-    selectionMode.value = false;
-  } catch (error: any) {
-    addToast(`Failed to delete monitors: ${escapeHtml(error?.message || error)}`, 'error');
   } finally {
     showConfirm.value = false;
     confirmTarget.value = null;
@@ -902,7 +942,6 @@ function navigateToMonitor(monitorId: string) {
   router.push(`/monitor/${monitorId}`);
 }
 
-// Computed stats
 const upCount = computed(() => store.items.filter(m => m.last_status === 'up').length);
 const downCount = computed(() => store.items.filter(m => m.last_status === 'down').length);
 const pausedCount = computed(() => store.items.filter(m => (m as any).is_paused === true || (m as any).active === false).length);
@@ -924,13 +963,11 @@ async function onDelete(m: any) {
 async function confirmDelete() {
   if (!confirmTarget.value) return;
   
-  // Handle bulk delete
   if (confirmTarget.value.isBulk) {
     await confirmBulkDelete();
     return;
   }
-  
-  // Handle single delete
+
   try {
     await store.remove(confirmTarget.value.id);
     addToast(`Deleted monitor "${escapeHtml(confirmTarget.value.name)}"`, 'success');
@@ -941,7 +978,6 @@ async function confirmDelete() {
     confirmTarget.value = null;
   }
 }
-// Removed onCheckNow - now using automatic interval-based checking
 
 function openCreate() {
   editing.value = null;
@@ -969,40 +1005,33 @@ function closeBulkEdit() {
 }
 function handleBulkEditSuccess() {
   selectedMonitors.value = [];
-  selectionMode.value = false;
 }
-async function exportCSV() {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await fetch('/api/monitors/export/csv', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    if (!response.ok) throw new Error('Export failed');
-    
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'monitors.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  } catch (error: any) {
-    alert('Export failed: ' + error.message);
-  }
+async function exportCSVAll() {
+  showExportDropdown.value = false;
+  await store.exportCSV();
 }
-// Helper function to enrich sparklines for all monitors
+async function exportCSVSelected() {
+  if (selectedMonitors.value.length === 0) return;
+  showExportDropdown.value = false;
+  await store.exportCSV(selectedMonitors.value);
+}
+
+function toggleStatusFilter(status: 'up' | 'down') {
+  filterStatus.value = filterStatus.value === status ? '' : status;
+}
+function togglePausedFilter() {
+  filterState.value = filterState.value === 'paused' ? '' : 'paused';
+}
 async function enrichSparklines() {
-  for (const m of store.items) {
+  await Promise.all(store.items.map(async (m: any) => {
     try {
       const logs = await store.logs(m.id, '1h');
-      (m as any).sparkline = logs.map((l: any) => l.response_time_ms || 0);
+      m.sparkline = logs.map((l: any) => l.response_time_ms || 0);
     } catch (error) {
       console.warn(`Failed to fetch sparkline for monitor ${m.id}:`, error);
-      (m as any).sparkline = [];
+      m.sparkline = [];
     }
-  }
+  }));
 }
 
 async function onSubmit(payload: any) {

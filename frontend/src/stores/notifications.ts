@@ -109,7 +109,6 @@ export const useNotificationsStore = defineStore('notifications', {
           throw new Error('Failed to mark notification as read');
         }
 
-        // Update local state
         const notification = this.notifications.find((n) => n.id === notificationId);
         if (notification) {
           notification.is_read = true;
@@ -137,7 +136,6 @@ export const useNotificationsStore = defineStore('notifications', {
           throw new Error('Failed to mark all as read');
         }
 
-        // Update local state
         this.notifications.forEach((n) => (n.is_read = true));
         this.unreadCount = 0;
       } catch (error: any) {
@@ -162,7 +160,6 @@ export const useNotificationsStore = defineStore('notifications', {
           throw new Error('Failed to delete notification');
         }
 
-        // Update local state
         const notification = this.notifications.find((n) => n.id === notificationId);
         if (notification && !notification.is_read) {
           this.unreadCount = Math.max(0, this.unreadCount - 1);

@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
+import { addToast, escapeHtml } from '../composables/useToast';
 
 export type Monitor = {
-  sparkline: never[];
+  sparkline: number[];
   id: string;
   name: string;
   type: 'http' | 'tcp' | 'ping' | 'smb';
@@ -10,6 +11,7 @@ export type Monitor = {
   interval_seconds: number;
   timeout_ms: number;
   active: boolean;
+  is_paused: boolean;
   tags?: string | null;
   dependency?: string | null;
   last_check?: string | null;
@@ -110,25 +112,26 @@ export const useMonitorsStore = defineStore('monitors', {
       return await res.json();
     },
 
-    async exportPersonalMonitorsCSV() {
+    async exportPersonalMonitorsCSV(ids?: string[]) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/monitors/export/csv', { 
-          headers: token ? { Authorization: `Bearer ${token}` } : {} 
+        const query = ids && ids.length ? `?ids=${encodeURIComponent(ids.join(','))}` : '';
+        const response = await fetch(`/api/monitors/export/csv${query}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (!response.ok) throw new Error('Export failed');
-        
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'monitors.csv';
+        a.download = ids && ids.length ? 'monitors-selected.csv' : 'monitors.csv';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
       } catch (error: any) {
-        alert('Export failed: ' + error.message);
+        addToast('Export failed: ' + escapeHtml(error?.message || 'Unknown error'), 'error');
       }
     },
 
@@ -151,8 +154,8 @@ export const useMonitorsStore = defineStore('monitors', {
     async logs(id: string, range = '1h') {
       return await this.getPersonalMonitorLogs(id, range);
     },
-    async exportCSV() {
-      await this.exportPersonalMonitorsCSV();
+    async exportCSV(ids?: string[]) {
+      await this.exportPersonalMonitorsCSV(ids);
     }
   },
   

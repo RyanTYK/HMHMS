@@ -3,11 +3,15 @@ import { UserNotification, NotificationType } from '../models/UserNotification';
 import { In } from 'typeorm';
 
 export class NotificationService {
-  private notificationRepository = AppDataSource.getRepository(UserNotification);
+  // A repository fetched once at class-field-init time (which, for the
+  // module-level `notificationService` singleton below, runs at import time)
+  // can run before AppDataSource.initialize() completes depending on import
+  // order. Every other service/controller in this codebase fetches its
+  // repository fresh per method call instead - do the same here.
+  private get notificationRepository() {
+    return AppDataSource.getRepository(UserNotification);
+  }
 
-  /**
-   * Create a new notification
-   */
   async createNotification(data: {
     userId: number;
     type: NotificationType;
@@ -29,9 +33,6 @@ export class NotificationService {
     return notification;
   }
 
-  /**
-   * Get all notifications for user
-   */
   async getUserNotifications(
     userId: number,
     filters?: { type?: NotificationType; isRead?: boolean }
@@ -54,16 +55,10 @@ export class NotificationService {
     return notifications;
   }
 
-  /**
-   * Get notifications by type (for tab filtering)
-   */
   async getNotificationsByType(userId: number, type: NotificationType): Promise<UserNotification[]> {
     return this.getUserNotifications(userId, { type });
   }
 
-  /**
-   * Get unread notifications count
-   */
   async getUnreadCount(userId: number): Promise<number> {
     return await this.notificationRepository.count({
       where: {
@@ -73,9 +68,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Mark notification as read
-   */
   async markAsRead(notificationId: number, userId: number): Promise<void> {
     const notification = await this.notificationRepository.findOne({
       where: { id: notificationId, user_id: userId }
@@ -89,9 +81,6 @@ export class NotificationService {
     await this.notificationRepository.save(notification);
   }
 
-  /**
-   * Mark all notifications as read
-   */
   async markAllAsRead(userId: number): Promise<void> {
     await this.notificationRepository
       .createQueryBuilder()
@@ -101,9 +90,6 @@ export class NotificationService {
       .execute();
   }
 
-  /**
-   * Delete notification
-   */
   async deleteNotification(notificationId: number, userId: number): Promise<void> {
     const result = await this.notificationRepository.delete({
       id: notificationId,
@@ -115,9 +101,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Delete multiple notifications
-   */
   async deleteNotifications(notificationIds: number[], userId: number): Promise<void> {
     await this.notificationRepository.delete({
       id: In(notificationIds),
@@ -125,9 +108,6 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Clear old notifications (older than specified days)
-   */
   async clearOldNotifications(userId: number, daysOld: number = 30): Promise<number> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
@@ -142,9 +122,6 @@ export class NotificationService {
     return result.affected || 0;
   }
 
-  /**
-   * Create monitor status change notification
-   */
   async createStatusNotification(
     userId: number,
     monitorId: string,

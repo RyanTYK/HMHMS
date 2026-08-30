@@ -1,8 +1,9 @@
 import { Response } from 'express';
 import { AppDataSource } from './data-source';
 import { Monitor } from '../models/Monitor';
-import { CheckLog } from '../models/CheckLog';
 import { UserNotification } from '../models/UserNotification';
+import { getLatestCheckLogs } from './latestCheckLogs';
+import { debugLog } from './debugLog';
 
 class SSEManager {
   private clients: Map<number, Set<Response>> = new Map();
@@ -10,7 +11,7 @@ class SSEManager {
   addClient(userId: number, res: Response) {
     if (!this.clients.has(userId)) this.clients.set(userId, new Set());
     this.clients.get(userId)!.add(res);
-    console.log(`SSE client connected for user ${userId}. Total clients for user: ${this.clients.get(userId)!.size}`);
+    debugLog(`SSE client connected for user ${userId}. Total clients for user: ${this.clients.get(userId)!.size}`);
     
     // Remove client when connection closes
     res.on('close', () => {
@@ -19,7 +20,7 @@ class SSEManager {
         set.delete(res);
         if (set.size === 0) this.clients.delete(userId);
       }
-      console.log(`SSE client disconnected for user ${userId}. Remaining: ${this.clients.get(userId)?.size || 0}`);
+      debugLog(`SSE client disconnected for user ${userId}. Remaining: ${this.clients.get(userId)?.size || 0}`);
     });
   }
 
@@ -38,7 +39,7 @@ class SSEManager {
         set.delete(client);
       }
     }
-    console.log(`Broadcasted check completion for monitor ${monitorId} to ${set.size} clients of user ${userId}`);
+    debugLog(`Broadcasted check completion for monitor ${monitorId} to ${set.size} clients of user ${userId}`);
   }
 
   async broadcastMonitors(userId?: number) {
@@ -58,22 +59,17 @@ class SSEManager {
 
     try {
       const monitorRepo = AppDataSource.getRepository(Monitor);
-      const logRepo = AppDataSource.getRepository(CheckLog);
 
       const monitors = await monitorRepo.find({ where: { user_id: userId } });
-      const withStatus = await Promise.all(
-        monitors.map(async (m) => {
-          const last = await logRepo.findOne({ 
-            where: { monitor_id: m.id }, 
-            order: { timestamp: 'DESC' } 
-          });
-          return {
-            ...m,
-            last_check: last?.timestamp || null,
-            last_status: last?.status || null,
-          };
-        })
-      );
+      const latestLogs = await getLatestCheckLogs(monitors.map(m => m.id));
+      const withStatus = monitors.map((m) => {
+        const last = latestLogs.get(m.id);
+        return {
+          ...m,
+          last_check: last?.timestamp || null,
+          last_status: last?.status || null,
+        };
+      });
 
       const message = `data: ${JSON.stringify({ type: 'monitors', data: withStatus })}\n\n`;
       
@@ -87,7 +83,7 @@ class SSEManager {
         }
       }
       
-      console.log(`Broadcasted monitors update to ${set.size} clients for user ${userId}`);
+      debugLog(`Broadcasted monitors update to ${set.size} clients for user ${userId}`);
     } catch (error) {
       console.error('Error broadcasting monitors:', error);
     }
@@ -118,7 +114,7 @@ class SSEManager {
         }
       }
       
-      console.log(`Broadcasted notifications update to ${set.size} clients for user ${userId}`);
+      debugLog(`Broadcasted notifications update to ${set.size} clients for user ${userId}`);
     } catch (error) {
       console.error('Error broadcasting notifications:', error);
     }

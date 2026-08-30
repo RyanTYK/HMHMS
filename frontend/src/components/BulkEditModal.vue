@@ -1,7 +1,6 @@
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal">
-      <!-- Header -->
       <div class="modal-header">
         <div class="modal-title-section">
           <h2>Bulk Edit Monitors</h2>
@@ -17,7 +16,6 @@
 
       <div class="modal-body">
         <form @submit.prevent="handleSubmit">
-          <!-- Check Settings Section -->
           <div class="section">
             <div class="section-header">
               <h3 class="section-title">Check Settings</h3>
@@ -80,7 +78,6 @@
             </div>
           </div>
 
-          <!-- Notification Settings Section -->
           <div class="section">
             <div class="section-header">
               <h3 class="section-title">Notification Settings</h3>
@@ -113,13 +110,13 @@
 
               <div class="notification-option">
                 <div class="checkbox-wrapper">
-                  <input 
-                    type="checkbox" 
-                    id="sendEmail" 
+                  <input
+                    type="checkbox"
+                    id="sendEmail"
                     v-model="formData.notify_owner"
                   />
-                  <label 
-                    for="sendEmail" 
+                  <label
+                    for="sendEmail"
                     class="checkbox-label"
                   >
                     Send to my email
@@ -207,25 +204,24 @@ async function handleSubmit() {
       active: formData.value.active
     };
 
+    const token = localStorage.getItem('token');
+    const results = await Promise.allSettled(
+      props.monitorIds.map(monitorId =>
+        axios.put(`/api/monitors/${monitorId}`, updates, { headers: { Authorization: `Bearer ${token}` } })
+      )
+    );
+
     let successCount = 0;
     let errorCount = 0;
-
-    for (const monitorId of props.monitorIds) {
-      try {
-        const token = localStorage.getItem('token');
-        await axios.put(
-          `/api/monitors/${monitorId}`,
-          updates,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+    results.forEach((result, i) => {
+      if (result.status === 'fulfilled') {
         successCount++;
-      } catch (error) {
-        console.error(`Failed to update monitor ${monitorId}:`, error);
+      } else {
+        console.error(`Failed to update monitor ${props.monitorIds[i]}:`, result.reason);
         errorCount++;
       }
-    }
+    });
 
-    // Refresh the monitors list
     await store.fetchAll();
 
     if (successCount > 0) {
@@ -255,18 +251,6 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
-/* Color Theme Variables */
-:root {
-  --brand-primary: #cc1389;
-  --brand-hover: #b8117b;
-  --brand-active: #a30f6e;
-  --brand-light: #fae7f3;
-  --brand-lighter: #f5d0e7;
-  --brand-medium: #e689c4;
-  --brand-dark: #8f0d60;
-  --brand-darker: #7a0b52;
-}
-
 .modal-overlay {
   position: fixed;
   inset: 0;

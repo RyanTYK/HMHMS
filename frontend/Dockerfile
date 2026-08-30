@@ -24,7 +24,7 @@ COPY . .
 # into the bundle and removes the need for CORS entirely.
 ENV VITE_API_URL=""
 
-RUN npm run build-only
+RUN npm run build
 
 ###############################################################################
 # Stage 2 - serve with nginx

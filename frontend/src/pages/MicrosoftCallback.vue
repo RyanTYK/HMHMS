@@ -69,12 +69,10 @@ const success = ref(false);
 
 onMounted(async () => {
   try {
-    // Get token from URL query parameters
-    const token = route.query.token as string;
+    const code = route.query.code as string;
     const errorParam = route.query.error as string;
 
     if (errorParam) {
-      // Handle error from backend redirect
       const errorMessages: Record<string, string> = {
         oauth_failed: 'Microsoft authentication failed. Please try again.',
         authentication_failed: 'Could not authenticate your Microsoft account.',
@@ -85,15 +83,14 @@ onMounted(async () => {
       return;
     }
 
-    if (!token) {
-      error.value = 'No authentication token received.';
+    if (!code) {
+      error.value = 'No sign-in code received.';
       isLoading.value = false;
       return;
     }
 
-    // Store the token and fetch user data
-    await authStore.setTokenAndFetchUser(token);
-    
+    await authStore.exchangeMicrosoftCode(code);
+
     // Show success briefly before redirecting
     success.value = true;
     isLoading.value = false;

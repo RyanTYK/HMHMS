@@ -1,7 +1,6 @@
 <template>
   <div class="min-h-screen bg-white">
     <div class="max-w-4xl mx-auto px-6 py-8">
-      <!-- Header -->
       <header class="mb-8">
         <div class="mb-6">
           <h1 class="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
@@ -9,9 +8,7 @@
         </div>
       </header>
 
-      <!-- Settings Sections -->
       <div class="space-y-6">
-        <!-- Browser Notifications Section -->
         <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <div class="flex items-start justify-between">
             <div class="flex-1">
@@ -22,7 +19,6 @@
                 Get browser notifications when a monitor goes down or comes back up while the tab is not focused.
               </p>
               
-              <!-- Permission Status -->
               <div v-if="browserPermission !== 'granted'" class="mb-4">
                 <div 
                   :class="[
@@ -47,7 +43,6 @@
                 </div>
               </div>
 
-              <!-- Request Permission Button -->
               <button
                 v-if="browserPermission === 'default'"
                 @click="requestNotificationPermission"
@@ -57,7 +52,6 @@
               </button>
             </div>
 
-            <!-- Toggle Switch -->
             <div class="ml-4">
               <button
                 @click="toggleBrowserNotifications"
@@ -80,7 +74,6 @@
             </div>
           </div>
 
-          <!-- Test Notification Button -->
           <div v-if="notificationsEnabled && browserPermission === 'granted'" class="mt-4 pt-6 border-t border-gray-200 flex justify-end">
             <button
               @click="sendTestNotification"
@@ -91,13 +84,11 @@
           </div>
         </div>
 
-        <!-- Account Information Section -->
         <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-8">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">
             Account Information
           </h3>
           <div class="space-y-6">
-            <!-- Name Field -->
             <div>
               <label class="text-sm font-medium text-gray-600 block mb-2">Name</label>
               <div v-if="!editingName" class="flex items-center gap-3">
@@ -137,7 +128,6 @@
               <p v-if="nameError" class="text-sm text-red-600 mt-1">{{ nameError }}</p>
             </div>
             
-            <!-- Email Field -->
             <div>
               <label class="text-sm font-medium text-gray-600 block mb-2">Email</label>
               <p class="text-gray-900">{{ authStore.user?.email }}</p>
@@ -154,6 +144,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { browserNotifications } from '../utils/browserNotifications';
+import { addToast, escapeHtml } from '../composables/useToast';
 
 const authStore = useAuthStore();
 const updating = ref(false);
@@ -184,10 +175,8 @@ function updateFocusState() {
 }
 
 onMounted(() => {
-  // Check browser permission status
   browserPermission.value = browserNotifications.getPermission();
-  
-  // Track focus state
+
   window.addEventListener('focus', updateFocusState);
   window.addEventListener('blur', updateFocusState);
   document.addEventListener('visibilitychange', updateFocusState);
@@ -224,7 +213,7 @@ async function toggleBrowserNotifications() {
   } catch (error) {
     console.error('Failed to update notification settings:', error);
     addLog(`Error: ${error}`, 'error');
-    alert('Failed to update notification settings. Please try again.');
+    addToast('Failed to update notification settings. Please try again.', 'error');
   } finally {
     updating.value = false;
   }
@@ -242,11 +231,11 @@ async function sendTestNotification() {
     if (result) {
       console.log('Test notification sent successfully');
     } else {
-      alert('Failed to send test notification. Please check your browser settings.');
+      addToast('Failed to send test notification. Please check your browser settings.', 'error');
     }
   } catch (error) {
     console.error('Error sending test notification:', error);
-    alert('Error sending test notification: ' + error);
+    addToast('Error sending test notification: ' + escapeHtml(String(error)), 'error');
   }
 }
 

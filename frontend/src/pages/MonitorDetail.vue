@@ -32,7 +32,7 @@
     </div>
     
     <!-- Loading state -->
-    <div v-if="loading" class="animate-pulse">
+    <div v-if="initialLoading" class="animate-pulse">
       <div class="bg-white rounded-lg shadow-md p-6 mb-8">
         <div class="flex items-center gap-4">
           <div class="h-6 bg-gray-200 rounded w-48"></div>
@@ -238,6 +238,7 @@ import { ref, onMounted, computed, nextTick, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Chart from 'chart.js/auto';
 import { addToast, escapeHtml } from '../composables/useToast';
+import { useSSE } from '../composables/useSSE';
 
 const route = useRoute();
 const router = useRouter();
@@ -256,6 +257,11 @@ const chartLabels = ref<string[]>([]);
 const logs = ref<any[]>([]);
 let chartInstance: Chart | null = null;
 const loading = ref(true);
+// Gates the full-page skeleton. Unlike `loading` (true for every fetch,
+// including background auto-refreshes from the countdown timer and SSE),
+// this only stays true until the first load resolves, so a background
+// refresh updates the page in place instead of flashing back to skeleton.
+const initialLoading = ref(true);
 const testSending = ref(false);
 const selectedRange = ref('1h');
 const currentTime = ref(new Date());
@@ -337,9 +343,7 @@ async function fetchMonitorDetail() {
       throw new Error('Failed to fetch monitor details');
     }
     const data = await res.json();
-    console.log('Monitor data received:', data);
-    console.log('Monitor interval_seconds:', data.interval_seconds);
-    
+
     // Validate monitor data
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid monitor data received');
@@ -358,9 +362,7 @@ async function fetchMonitorDetail() {
   const logsRes = await fetch(`/api/monitors/${route.params.id}/logs?range=${selectedRange.value}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!logsRes.ok) throw new Error('Failed to fetch logs');
     const logsData = await logsRes.json(); // Assume API returns logs in ascending order (oldest first)
-    
-    console.log('Fetched logsData:', logsData);
-    
+
     // Validate logs data
     if (!Array.isArray(logsData)) {
       console.warn('Invalid logs data received, using empty array');
@@ -372,8 +374,6 @@ async function fetchMonitorDetail() {
       chartData.value = logsData.map((l: any) => l?.response_time_ms || 0);
       chartLabels.value = logsData.map((l: any) => formatDate(l?.timestamp, true));
     }
-    console.log('Mapped chartData:', chartData.value);
-    console.log('Mapped chartLabels:', chartLabels.value);
 
     // Only update status and lastChecked from logs if the API didn't provide them
     if (Array.isArray(logsData) && logsData.length > 0 && (!monitor.value.lastChecked || !monitor.value.status)) {
@@ -391,9 +391,8 @@ async function fetchMonitorDetail() {
     // Note: renderChart will be called after loading is set to false
   } catch (error: any) {
     console.error('Error fetching monitor details:', error);
-    // Show user-friendly error
     if (error?.message) {
-      alert(`Error loading monitor: ${error.message}`);
+      addToast(`<strong>Error loading monitor</strong><br/>${escapeHtml(error.message)}`, 'error');
     }
     // If monitor not found or critical error, redirect to dashboard
     if (error?.message?.includes('not found')) {
@@ -401,6 +400,7 @@ async function fetchMonitorDetail() {
     }
   } finally {
     loading.value = false;
+    initialLoading.value = false;
     lastRefreshTime.value = new Date();
     // Force update current time to recalculate countdown immediately
     currentTime.value = new Date();
@@ -417,13 +417,8 @@ let chartRenderRetries = 0;
 const MAX_CHART_RETRIES = 3;
 
 function renderChart() {
-  console.log('renderChart called');
-  console.log('chartData:', chartData.value);
-  console.log('chartLabels:', chartLabels.value);
-  
   // Don't render chart if monitor is not active
   if (!monitor.value || !monitor.value.active) {
-    console.log('Monitor is not active, skipping chart render');
     if (chartInstance) {
       chartInstance.destroy();
       chartInstance = null;
@@ -432,7 +427,6 @@ function renderChart() {
   }
   
   const ctx = document.getElementById('responseChart') as HTMLCanvasElement;
-  console.log('Canvas element:', ctx);
   if (!ctx) {
     if (chartRenderRetries < MAX_CHART_RETRIES) {
       console.warn(`Canvas element not found, retrying (attempt ${chartRenderRetries + 1}/${MAX_CHART_RETRIES})`);
@@ -455,7 +449,6 @@ function renderChart() {
   }
   
   if (!chartData.value || chartData.value.length === 0) {
-    console.log('No chart data available');
     if (chartInstance) {
       chartInstance.destroy();
       chartInstance = null;
@@ -464,7 +457,6 @@ function renderChart() {
   }
   
   if (chartInstance) {
-    console.log('Updating existing chart');
     chartInstance.data.labels = chartLabels.value;
     if (chartInstance.data.datasets[0]) {
         chartInstance.data.datasets[0].data = chartData.value;
@@ -474,7 +466,6 @@ function renderChart() {
   }
   
   try {
-    console.log('Creating new chart');
     chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
@@ -545,7 +536,6 @@ function renderChart() {
       },
     }
   });
-    console.log('Chart created successfully');
   } catch (error) {
     console.error('Error creating MonitorDetail chart:', error);
   }
@@ -691,7 +681,6 @@ function startCountdownTimer() {
         
         // Immediate refresh: check overdue for 2+ seconds and haven't refreshed recently
         if (timeSinceDue >= 2000 && timeSinceRefresh >= 2000) {
-          console.log('Immediate refresh: check overdue for 2+ seconds');
           lastRefreshTime.value = now;
           await fetchMonitorDetail();
         }
@@ -699,7 +688,6 @@ function startCountdownTimer() {
         else if (timeSinceDue >= 5000) {
           const minRefreshInterval = Math.max(3000, checkInterval / 4);
           if (timeSinceRefresh >= minRefreshInterval) {
-            console.log('Regular refresh: check overdue for 5+ seconds');
             lastRefreshTime.value = now;
             await fetchMonitorDetail();
           }
@@ -709,14 +697,21 @@ function startCountdownTimer() {
   }, 1000);
 }
 
+const { setConnection, closeConnection } = useSSE();
+
 onMounted(() => {
   fetchMonitorDetail();
   startCountdownTimer();
-  
-  // Set up SSE connection for real-time updates
+
+  // Set up SSE connection for real-time updates. Registered through the
+  // shared useSSE() connection registry (same pattern as Dashboard.vue) so
+  // it's tracked globally instead of an untracked stream living only in
+  // this component's closure - e.g. auth.ts's logout() closes whatever
+  // connection is currently registered, which previously missed this one.
   const token = localStorage.getItem('token');
   const eventSource = new EventSource(`/api/events${token ? `?token=${encodeURIComponent(token)}` : ''}`);
-  
+  setConnection(eventSource);
+
   let lastSSEProcessTime = 0;
   const SSE_THROTTLE_MS = 2000; // Only process SSE messages every 2 seconds max
   
@@ -730,17 +725,14 @@ onMounted(() => {
         return; // Ignore messages that come too quickly
       }
       
-      console.log('SSE message received:', data);
       if (data.type === 'check') {
         // If our specific monitor has updated, refresh the data immediately
         if (data.monitorId === Number(route.params.id) || data.monitorId === route.params.id) {
           // Skip refresh if monitor is disabled or paused
           if (!monitor.value.active || (monitor.value as any).is_paused) {
-            console.log('SSE: Monitor is disabled/paused, skipping refresh');
             return;
           }
           lastSSEProcessTime = now;
-          console.log('SSE: Monitor check completed, refreshing data immediately');
           lastRefreshTime.value = new Date(); // Update refresh time to prevent countdown timer conflicts
           await fetchMonitorDetail();
         }
@@ -756,7 +748,7 @@ onMounted(() => {
   
   // Cleanup event source on component unmount
   onUnmounted(() => {
-    eventSource.close();
+    closeConnection();
     if (chartInstance) {
       chartInstance.destroy();
     }

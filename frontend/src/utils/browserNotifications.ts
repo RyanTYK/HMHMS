@@ -1,8 +1,3 @@
-/**
- * Browser Notifications Utility
- * Handles browser notification permissions and displaying notifications
- */
-
 export type NotificationPermission = 'granted' | 'denied' | 'default';
 
 export interface BrowserNotificationOptions {
@@ -22,31 +17,19 @@ class BrowserNotificationManager {
     this.checkPermission();
   }
 
-  /**
-   * Check if browser notifications are supported
-   */
   isSupported(): boolean {
     return 'Notification' in window;
   }
 
-  /**
-   * Get current notification permission status
-   */
   getPermission(): NotificationPermission {
     if (!this.isSupported()) return 'denied';
     return Notification.permission as NotificationPermission;
   }
 
-  /**
-   * Check and update permission status
-   */
   private checkPermission(): void {
     this.hasPermission = this.getPermission() === 'granted';
   }
 
-  /**
-   * Request notification permission from the user
-   */
   async requestPermission(): Promise<NotificationPermission> {
     if (!this.isSupported()) {
       console.warn('Browser notifications are not supported');
@@ -68,24 +51,17 @@ class BrowserNotificationManager {
     }
   }
 
-  /**
-   * Show a browser notification
-   * Only shows if tab is not focused and permission is granted
-   */
   async show(options: BrowserNotificationOptions, force = false): Promise<Notification | null> {
-    // Check if browser supports notifications
     if (!this.isSupported()) {
       console.warn('Browser notifications not supported');
       return null;
     }
 
-    // Check if tab is focused - don't show if user is already looking at the page (unless forced)
     if (!force && (document.hasFocus() || document.visibilityState === 'visible')) {
       console.log('Tab is focused, skipping browser notification');
       return null;
     }
 
-    // Check permission
     if (this.getPermission() !== 'granted') {
       console.warn('Browser notification permission not granted');
       return null;
@@ -100,23 +76,19 @@ class BrowserNotificationManager {
         requireInteraction: options.requireInteraction || false,
       });
 
-      // Log when notification is shown
       notification.onshow = () => {
         console.log('Notification shown:', options.title);
       };
 
-      // Log any errors
       notification.onerror = (error) => {
         console.error('Notification error:', error);
       };
 
-      // Focus window when notification is clicked
       notification.onclick = (event) => {
         event.preventDefault();
         window.focus();
         notification.close();
 
-        // Call custom click handler if provided
         if (options.onClick) {
           options.onClick();
         }
@@ -129,9 +101,6 @@ class BrowserNotificationManager {
     }
   }
 
-  /**
-   * Show a notification for a new monitor alert
-   */
   async showMonitorAlert(monitorName: string, status: string, monitorId?: string, force = false): Promise<Notification | null> {
     return this.show({
       title: `Monitor Alert: ${monitorName}`,
@@ -143,16 +112,12 @@ class BrowserNotificationManager {
       },
       onClick: () => {
         if (monitorId) {
-          // Navigate to monitor detail page
           window.location.href = `/monitor/${monitorId}`;
         }
       }
     }, force);
   }
 
-  /**
-   * Show a generic notification
-   */
   async showGenericNotification(title: string, message: string, notificationId?: number, force = false): Promise<Notification | null> {
     return this.show({
       title,
@@ -169,5 +134,4 @@ class BrowserNotificationManager {
   }
 }
 
-// Export singleton instance
 export const browserNotifications = new BrowserNotificationManager();

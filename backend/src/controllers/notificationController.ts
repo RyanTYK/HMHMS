@@ -2,9 +2,6 @@ import { Request, Response } from 'express';
 import { notificationService } from '../services/notificationService';
 import { NotificationType } from '../models/UserNotification';
 
-/**
- * Get all notifications for current user
- */
 export const getNotifications = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -27,9 +24,6 @@ export const getNotifications = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Get notifications by type (for tab filtering)
- */
 export const getNotificationsByType = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -51,9 +45,6 @@ export const getNotificationsByType = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Get unread count
- */
 export const getUnreadCount = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -66,9 +57,6 @@ export const getUnreadCount = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Mark notification as read
- */
 export const markAsRead = async (req: Request, res: Response) => {
   try {
     const notificationId = parseInt(req.params.id);
@@ -92,9 +80,6 @@ export const markAsRead = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Mark all notifications as read
- */
 export const markAllAsRead = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -108,9 +93,6 @@ export const markAllAsRead = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Delete notification
- */
 export const deleteNotification = async (req: Request, res: Response) => {
   try {
     const notificationId = parseInt(req.params.id);
@@ -134,9 +116,6 @@ export const deleteNotification = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Delete multiple notifications
- */
 export const deleteNotifications = async (req: Request, res: Response) => {
   try {
     const { notificationIds } = req.body;
@@ -155,9 +134,6 @@ export const deleteNotifications = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Clear old notifications
- */
 export const clearOldNotifications = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;

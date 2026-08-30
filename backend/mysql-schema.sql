@@ -14,6 +14,7 @@ CREATE TABLE `users` (
   `avatar_url` VARCHAR(500) NULL,
   INDEX `idx_users_oauth_provider` (`oauth_provider`),
   INDEX `idx_users_oauth_id` (`oauth_id`),
+  INDEX `idx_users_verification_token` (`verification_token`),
   UNIQUE KEY `unique_oauth_provider_id` (`oauth_provider`, `oauth_id`)
 );
 

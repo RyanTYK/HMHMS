@@ -4,7 +4,7 @@ import { AppSetting } from '../models/AppSetting';
 
 const SETTING_KEY = 'jwt_secret';
 
-let cachedSecret = process.env.JWT_SECRET || 'changeme';
+let cachedSecret: string | null = process.env.JWT_SECRET || null;
 
 // Call once at startup, after AppDataSource.initialize() and before the
 // server accepts requests. If JWT_SECRET isn't set in the environment,
@@ -32,5 +32,8 @@ export async function initJwtSecret(): Promise<void> {
 }
 
 export function getJwtSecret(): string {
+  if (!cachedSecret) {
+    throw new Error('JWT secret not initialized - initJwtSecret() must run before handling requests');
+  }
   return cachedSecret;
 }

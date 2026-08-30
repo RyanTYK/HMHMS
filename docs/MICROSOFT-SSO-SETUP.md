@@ -105,7 +105,9 @@ docker compose up -d --build
 6. You should be redirected back and logged in
 
 ### Test 2: Account Linking
-1. Register a normal account with email/password
+1. Register a normal account with email/password **and verify it** (auto-linking only
+   applies to an already-verified account - see "Account Linking Requires Verification"
+   below)
 2. Logout
 3. Sign in with Microsoft using the **same email**
 4. The Microsoft account should auto-link to your existing account
@@ -141,6 +143,16 @@ docker compose up -d --build
 ### "This account uses microsoft sign-in" error
 - **Expected behavior**: User created via Microsoft cannot use password login
 - **Fix**: Use "Sign in with Microsoft" button instead
+
+### Account Linking Requires Verification
+- **Expected behavior**: Signing in with Microsoft using an email that matches an
+  existing local account only auto-links if that local account is already
+  `email_verified`. An unverified account gets a clear error instead of being
+  silently taken over - an unverified account could belong to anyone who typed
+  that email into the register form, so linking it to whoever next proves
+  ownership via Microsoft would be an account-takeover path.
+- **Fix**: Verify the local account first (via the emailed link), then sign in
+  with Microsoft again.
 
 ---
 
@@ -190,9 +202,13 @@ docker compose up -d --build
 3. Backend redirects to Microsoft login
 4. User authenticates with Microsoft
 5. Microsoft redirects back to backend callback
-6. Backend validates, creates/links user, generates JWT
-7. Backend redirects to frontend with JWT token
-8. Frontend stores token and fetches user data
+6. Backend validates, creates/links user, generates a JWT, and stores it
+   server-side under a short-lived (60s) single-use exchange code
+7. Backend redirects to frontend with the exchange code (not the JWT itself -
+   keeping it out of the URL means it never lands in browser history or
+   server access logs)
+8. Frontend calls `POST /api/auth/microsoft/exchange` with the code to get
+   the real JWT, stores it, and fetches user data
 9. User is logged in
 
 ---
@@ -201,7 +217,10 @@ docker compose up -d --build
 
 ### OAuth Routes
 - `GET /api/auth/microsoft` - Initiates Microsoft OAuth flow
-- `GET /api/auth/microsoft/callback` - Handles Microsoft OAuth callback
+- `GET /api/auth/microsoft/callback` - Handles Microsoft OAuth callback, redirects
+  to the frontend with a short-lived single-use exchange code
+- `POST /api/auth/microsoft/exchange` - Exchanges that code for the real JWT
+  (body: `{ "code": "..." }`)
 
 ### Existing Auth Routes
 - `POST /api/auth/login` - Email/password login

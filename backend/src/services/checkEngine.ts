@@ -14,6 +14,7 @@ import net from 'net';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { sseManager } from '../utils/sseManager';
+import { debugLog } from '../utils/debugLog';
 
 // The shared SMTP verify/transporter live in emailService.ts; re-exported
 // here since callers already import verifySMTPTransport from this module.
@@ -41,7 +42,6 @@ function isSafeUncPath(target: string): boolean {
   return UNC_RE.test(target);
 }
 
-// Check VPN dependency
 async function checkVPNDependency(dependency?: string): Promise<boolean> {
   if (!dependency) return true;
 
@@ -72,7 +72,6 @@ async function checkVPNDependency(dependency?: string): Promise<boolean> {
   }
 }
 
-// Perform SMB share check
 async function performSMBCheck(target: string, timeout: number): Promise<{ status: 'up' | 'down', response_time_ms?: number, error_text?: string }> {
   try {
     const isWindows = process.platform === 'win32';
@@ -109,7 +108,6 @@ async function performSMBCheck(target: string, timeout: number): Promise<{ statu
   }
 }
 
-// Perform ping check
 async function performPingCheck(target: string, timeout: number): Promise<{ status: 'up' | 'down', response_time_ms?: number, error_text?: string }> {
   if (!isSafeHost(target)) {
     return { status: 'down', error_text: `Invalid ping target: ${target}` };
@@ -134,7 +132,6 @@ async function performPingCheck(target: string, timeout: number): Promise<{ stat
   }
 }
 
-// Perform a single check attempt for a monitor
 async function performSingleCheck(monitor: Monitor): Promise<{
   status: 'up' | 'down';
   response_time_ms?: number;
@@ -149,10 +146,18 @@ async function performSingleCheck(monitor: Monitor): Promise<{
 
   try {
     if (monitor.type === 'http') {
-      const res = await axios.get(monitor.target, { timeout: monitor.timeout_ms });
+      // Without validateStatus, axios treats any 4xx/5xx as a rejected promise
+      // and this whole branch falls into the catch block below - http_status
+      // never gets set and error_text becomes a generic axios message instead
+      // of the real response status. Accept every status here and classify it
+      // ourselves so a real HTTP error is reported accurately.
+      const res = await axios.get(monitor.target, { timeout: monitor.timeout_ms, validateStatus: () => true });
       status = res.status < 400 ? 'up' : 'down';
       http_status = res.status;
       response_time_ms = Date.now() - start;
+      if (status === 'down') {
+        error_text = `HTTP ${res.status} ${res.statusText || ''}`.trim();
+      }
     } else if (monitor.type === 'tcp') {
       if (!monitor.port || monitor.port < 1 || monitor.port > 65535) {
         throw new Error('TCP monitor requires a valid port (1-65535)');
@@ -193,7 +198,6 @@ async function performSingleCheck(monitor: Monitor): Promise<{
   return { status, response_time_ms, http_status, error_text };
 }
 
-// Helper function to wait/sleep
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -217,7 +221,7 @@ function getRetryBudgetMs(monitor: Monitor): number {
 }
 
 export async function runCheck(monitor: Monitor) {
-  console.log(`[CheckEngine] Starting check for ${monitor.id} (${monitor.name}) at ${new Date().toISOString()}`);
+  debugLog(`[CheckEngine] Starting check for ${monitor.id} (${monitor.name}) at ${new Date().toISOString()}`);
   
   // Check monitor dependencies (other monitors must be UP)
   const dependencyRepo = AppDataSource.getRepository(MonitorDependency);
@@ -228,25 +232,22 @@ export async function runCheck(monitor: Monitor) {
 
   for (const dep of dependencies) {
     if (dep.dependsOnMonitor && dep.dependsOnMonitor.last_status !== 'up') {
-      console.log(`Skipping check for ${monitor.name} - dependency ${dep.dependsOnMonitor.name} is not UP`);
+      debugLog(`Skipping check for ${monitor.name} - dependency ${dep.dependsOnMonitor.name} is not UP`);
       return;
     }
   }
 
-  // Check VPN dependency
   const dependencyMet = await checkVPNDependency(monitor.dependency);
   if (!dependencyMet) {
-    console.log(`Skipping check for ${monitor.name} - VPN dependency not met`);
+    debugLog(`Skipping check for ${monitor.name} - VPN dependency not met`);
     return;
   }
 
-  // Perform check with retry logic
   let checkResult = await performSingleCheck(monitor);
   let attemptCount = 1;
 
-  // If first check failed and we have retries configured, retry
   if (checkResult.status === 'down' && monitor.max_retries > 0) {
-    console.log(`[CheckEngine] ${monitor.name} failed (attempt ${attemptCount}/${monitor.max_retries + 1}). Retrying...`);
+    debugLog(`[CheckEngine] ${monitor.name} failed (attempt ${attemptCount}/${monitor.max_retries + 1}). Retrying...`);
 
     let retryBudgetMs = getRetryBudgetMs(monitor);
     let clampWarned = false;
@@ -276,25 +277,23 @@ export async function runCheck(monitor: Monitor) {
       retryBudgetMs -= Date.now() - waitStart;
 
       attemptCount++;
-      console.log(`[CheckEngine] Retry ${retry + 1}/${monitor.max_retries} for ${monitor.name} (attempt ${attemptCount}/${monitor.max_retries + 1})`);
+      debugLog(`[CheckEngine] Retry ${retry + 1}/${monitor.max_retries} for ${monitor.name} (attempt ${attemptCount}/${monitor.max_retries + 1})`);
 
       const probeStart = Date.now();
       checkResult = await performSingleCheck(monitor);
       retryBudgetMs -= Date.now() - probeStart;
 
-      // If check succeeds, stop retrying
       if (checkResult.status === 'up') {
-        console.log(`[CheckEngine] ${monitor.name} recovered on retry ${retry + 1}`);
+        debugLog(`[CheckEngine] ${monitor.name} recovered on retry ${retry + 1}`);
         break;
       }
     }
   }
 
-  // Final result after all retries
   const { status, response_time_ms, http_status, error_text } = checkResult;
   
   if (attemptCount > 1) {
-    console.log(`[CheckEngine] Final status for ${monitor.name} after ${attemptCount} attempts: ${status}`);
+    debugLog(`[CheckEngine] Final status for ${monitor.name} after ${attemptCount} attempts: ${status}`);
   }
 
   // Determine previous status BEFORE writing the new log so we can detect changes accurately
@@ -304,7 +303,6 @@ export async function runCheck(monitor: Monitor) {
     order: { timestamp: 'DESC' }
   });
 
-  // Log result
   const log = logRepo.create({
     monitor_id: monitor.id,
     timestamp: new Date(),
@@ -315,7 +313,7 @@ export async function runCheck(monitor: Monitor) {
   });
   await logRepo.save(log);
 
-  console.log(`[CheckEngine] Saved log for ${monitor.id} at ${log.timestamp.toISOString()} status=${status}`);
+  debugLog(`[CheckEngine] Saved log for ${monitor.id} at ${log.timestamp.toISOString()} status=${status}`);
 
   // Calculate uptime percentage (last 100 checks)
   const recentLogs = await logRepo.find({
@@ -345,7 +343,7 @@ export async function runCheck(monitor: Monitor) {
       })
       .where('id = :id', { id: monitor.id })
       .execute();
-    console.log(`[CheckEngine] Updated monitor ${monitor.id}: status=${status}, uptime=${uptimePercentage}%`);
+    debugLog(`[CheckEngine] Updated monitor ${monitor.id}: status=${status}, uptime=${uptimePercentage}%`);
   } catch (err: any) {
     console.error(`Failed to update monitor ${monitor.id}:`, err?.message || err);
   }
@@ -360,11 +358,11 @@ export async function runCheck(monitor: Monitor) {
   // Notification logic - Always check for status changes to create in-app notifications
   const notificationRepo = AppDataSource.getRepository(Notification);
   const statusChanged = prevLog && prevLog.status !== status;
-  
+
   let shouldNotify = false;
   let notificationReason = '';
 
-  console.log(`[CheckEngine] Notification check for ${monitor.name}: status=${status}, statusChanged=${statusChanged}, prevStatus=${prevLog?.status}, notify_owner=${monitor.notify_owner}`);
+  debugLog(`[CheckEngine] Notification check for ${monitor.name}: status=${status}, statusChanged=${statusChanged}, prevStatus=${prevLog?.status}, notify_owner=${monitor.notify_owner}`);
 
   if (statusChanged) {
     // Status changed (up->down or down->up) - ALWAYS notify immediately
@@ -378,7 +376,7 @@ export async function runCheck(monitor: Monitor) {
       order: { sent_at: 'DESC' }
     });
 
-    console.log(`[CheckEngine] Last notification for ${monitor.name}: ${lastNotif ? new Date(lastNotif.sent_at).toISOString() : 'none'}`);
+    debugLog(`[CheckEngine] Last notification for ${monitor.name}: ${lastNotif ? new Date(lastNotif.sent_at).toISOString() : 'none'}`);
 
     if (!lastNotif) {
       // No notification ever sent (this shouldn't happen, but just in case)
@@ -389,7 +387,7 @@ export async function runCheck(monitor: Monitor) {
       const timeSinceLastNotif = Date.now() - lastNotif.sent_at.getTime();
       const reminderInterval = monitor.notification_resend_after * 60 * 1000; // minutes to ms
 
-      console.log(`[CheckEngine] Time since last notification: ${Math.round(timeSinceLastNotif / 60000)} min, reminder interval: ${monitor.notification_resend_after} minutes`);
+      debugLog(`[CheckEngine] Time since last notification: ${Math.round(timeSinceLastNotif / 60000)} min, reminder interval: ${monitor.notification_resend_after} minutes`);
 
       if (timeSinceLastNotif >= reminderInterval) {
         shouldNotify = true;
@@ -398,11 +396,9 @@ export async function runCheck(monitor: Monitor) {
     }
   }
 
-  // Send notifications if needed
   if (shouldNotify) {
-    console.log(`[CheckEngine] Sending notification for ${monitor.name}: ${notificationReason}`);
-    
-    // Create in-app notification ONLY if notify_alert is enabled
+    debugLog(`[CheckEngine] Sending notification for ${monitor.name}: ${notificationReason}`);
+
     if (monitor.notify_alert) {
       await notificationService.createStatusNotification(
         monitor.user_id,
@@ -410,26 +406,25 @@ export async function runCheck(monitor: Monitor) {
         monitor.name,
         status
       );
-      console.log(`[CheckEngine] Created in-app notification for ${monitor.name}`);
+      debugLog(`[CheckEngine] Created in-app notification for ${monitor.name}`);
     } else {
-      console.log(`[CheckEngine] Skipping in-app notification (notify_alert is disabled)`);
+      debugLog(`[CheckEngine] Skipping in-app notification (notify_alert is disabled)`);
     }
-    
+
     // Send email notifications based on notify_owner and email_recipients settings
     const emailList: string[] = [];
-    
-    // ONLY add owner's email if notify_owner is TRUE
+
     if (monitor.notify_owner) {
       const userRepo = AppDataSource.getRepository(User);
       const owner = await userRepo.findOne({ where: { id: monitor.user_id } });
       if (owner?.email) {
         emailList.push(owner.email);
-        console.log(`[CheckEngine] Added owner email to notification list`);
+        debugLog(`[CheckEngine] Added owner email to notification list`);
       }
     } else {
-      console.log(`[CheckEngine] Skipping owner email (notify_owner is disabled)`);
+      debugLog(`[CheckEngine] Skipping owner email (notify_owner is disabled)`);
     }
-    
+
     // Add additional recipients if configured (independent of notify_owner)
     if (monitor.email_recipients) {
       const additionalEmails = monitor.email_recipients
@@ -437,21 +432,20 @@ export async function runCheck(monitor: Monitor) {
         .map(email => email.trim())
         .filter(email => email);
       emailList.push(...additionalEmails);
-      console.log(`[CheckEngine] Added ${additionalEmails.length} additional email recipients`);
+      debugLog(`[CheckEngine] Added ${additionalEmails.length} additional email recipients`);
     }
-    
-    // Send email notifications to all recipients in the list
+
     if (emailList.length > 0) {
       for (const email of emailList) {
         try {
           await sendNotification(monitor, status, email);
-          console.log(`Sent ${status} notification for ${monitor.name} to ${email}`);
+          debugLog(`Sent ${status} notification for ${monitor.name} to ${email}`);
         } catch (error: any) {
           console.error(`Failed to send notification to ${email}:`, error?.message || error);
         }
       }
     } else {
-      console.log(`[CheckEngine] No email recipients configured for ${monitor.name}`);
+      debugLog(`[CheckEngine] No email recipients configured for ${monitor.name}`);
     }
   }
 }
@@ -510,3 +504,4 @@ export async function sendTestNotificationEmail(monitor: Monitor, email: string)
     `
   });
 }
+

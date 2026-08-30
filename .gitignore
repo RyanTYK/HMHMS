@@ -28,8 +28,6 @@ dist/
 **/.env
 **/.env.local
 **/.env.*.local
-!backend/example.env
-!frontend/.env.example
 
 # Logs / pids / temp
 logs/

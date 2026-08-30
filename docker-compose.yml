@@ -103,6 +103,11 @@ services:
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       MICROSOFT_TENANT_ID:     ${MICROSOFT_TENANT_ID:-}
       MICROSOFT_CALLBACK_URL:  ${MICROSOFT_CALLBACK_URL:-http://localhost:8080/api/auth/microsoft/callback}
+
+      # Verbose debug logging (off by default) - set to "true" to enable
+      API_DEBUG:    ${API_DEBUG:-false}
+      WORKER_DEBUG: ${WORKER_DEBUG:-false}
+      SMTP_DEBUG:   ${SMTP_DEBUG:-false}
     networks: [hmhms]
 
   ##########################################################################

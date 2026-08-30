@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import Chart from 'chart.js/auto';
 
 const props = defineProps({
@@ -99,6 +99,12 @@ const renderChart = () => {
 
 onMounted(renderChart);
 watch(() => props.data, renderChart);
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+});
 </script>
 
 <style scoped>

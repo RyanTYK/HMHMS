@@ -41,7 +41,7 @@ export function removeToast(id: number) {
 // name/target are fully user-controlled and get embedded as raw HTML the
 // next time a toast references them (create/update/delete/test).
 export function escapeHtml(value: unknown): string {
-  return String(value)
+  return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

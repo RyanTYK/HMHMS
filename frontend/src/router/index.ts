@@ -16,9 +16,6 @@ const routes = [
 
   // Settings
   { path: '/settings', component: () => import('../pages/Settings.vue'), meta: { requiresAuth: true, section: 'individual' } },
-
-  // Future routes (placeholders)
-  { path: '/bulk-import', component: () => import('../pages/Dashboard.vue'), meta: { requiresAuth: true, section: 'individual' } }, // TODO: Session 6
 ];
 
 const router = createRouter({

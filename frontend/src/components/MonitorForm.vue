@@ -1,7 +1,6 @@
 <template>
   <div class="modal-overlay" @click.self="emit('close')">
     <div class="modal">
-      <!-- Header -->
       <div class="modal-header">
         <div class="modal-title-section">
           <h2>{{ isEdit ? 'Edit Monitor' : 'Add New Monitor' }}</h2>
@@ -190,14 +189,14 @@
 
               <div class="notification-option">
                 <div class="checkbox-wrapper">
-                  <input 
-                    type="checkbox" 
-                    id="sendEmail" 
+                  <input
+                    type="checkbox"
+                    id="sendEmail"
                     v-model="form.notify_owner"
                     :disabled="!form.active"
                   />
-                  <label 
-                    for="sendEmail" 
+                  <label
+                    for="sendEmail"
                     :class="['checkbox-label', { 'opacity-50 cursor-not-allowed': !form.active }]"
                   >
                     Send to my email
@@ -244,7 +243,7 @@
 
 <script setup lang="ts">
 import { reactive, watch, computed } from 'vue';
-import { useAuthStore } from '../stores/auth';
+import { addToast } from '../composables/useToast';
 
 type Form = {
   id?: string;
@@ -268,8 +267,6 @@ type Form = {
 const props = defineProps<{ value?: Partial<Form>; submitting?: boolean }>();
 const emit = defineEmits<{ (e: 'submit', payload: Partial<Form>): void; (e: 'close'): void }>();
 
-const authStore = useAuthStore();
-const userEmail = computed(() => authStore.user?.email || 'your-email@example.com');
 
 const form = reactive<Form>({
   name: '',
@@ -291,7 +288,6 @@ const form = reactive<Form>({
 
 const isEdit = computed(() => Boolean(props.value?.id));
 
-// Parse existing values when editing
 watch(() => props.value, (v) => {
   if (v) {
     Object.assign(form, v);
@@ -302,7 +298,6 @@ watch(() => props.value, (v) => {
 // Auto-disable notify_alert and notify_owner when monitoring is disabled
 watch(() => form.active, (isActive) => {
   if (!isActive) {
-    // When monitoring is disabled, also disable all notifications
     form.notify_alert = false;
     form.notify_owner = false;
   }
@@ -323,7 +318,7 @@ watch(() => form.type, (newType, oldType) => {
 
 function onSubmit() {
   if (form.type === 'tcp' && !form.port) {
-    alert('Port is required for TCP');
+    addToast('Port is required for TCP', 'error');
     return;
   }
   
@@ -332,18 +327,6 @@ function onSubmit() {
 </script>
 
 <style scoped>
-/* Color Theme Variables */
-:root {
-  --brand-primary: #cc1389;
-  --brand-hover: #b8117b;
-  --brand-active: #a30f6e;
-  --brand-light: #fae7f3;
-  --brand-lighter: #f5d0e7;
-  --brand-medium: #e689c4;
-  --brand-dark: #8f0d60;
-  --brand-darker: #7a0b52;
-}
-
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -559,91 +542,6 @@ function onSubmit() {
   font-style: italic;
 }
 
-.resend-config {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.resend-config label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #8f0d60;
-  margin: 0;
-  flex-shrink: 0;
-}
-
-.resend-config input {
-  width: 80px;
-  padding: 8px 12px;
-  border: 1px solid #f0b8dc;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #3d0629;
-  background: white;
-  transition: all 0.2s;
-}
-
-.resend-config input:focus {
-  outline: none;
-  border-color: #cc1389;
-  box-shadow: 0 0 0 3px rgba(204, 19, 137, 0.1);
-}
-
-.resend-help {
-  font-size: 12px;
-  color: #a30f6e;
-  margin-top: 6px;
-  font-style: italic;
-}
-
-.email-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.email-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: rgba(250, 231, 243, 0.5);
-  border-radius: 8px;
-  border: 1px solid #f5d0e7;
-  transition: all 0.2s;
-}
-
-.email-item:hover {
-  background: rgba(245, 208, 231, 0.6);
-  border-color: #eba1d0;
-}
-
-.email-bullet {
-  color: #cc1389;
-  font-size: 10px;
-}
-
-.email-text {
-  flex: 1;
-  font-size: 14px;
-  color: #3d0629;
-}
-
-.email-remove {
-  background: none;
-  border: none;
-  color: #e089c4;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 4px;
-  transition: color 0.2s;
-}
-
-.email-remove:hover {
-  color: #cc1389;
-}
 
 .modal-footer {
   display: flex;
@@ -689,14 +587,4 @@ function onSubmit() {
   transform: translateY(-1px);
 }
 
-.btn-secondary {
-  background: rgba(204, 19, 137, 0.1);
-  color: #cc1389;
-  border: 1px solid #fae7f3;
-}
-
-.btn-secondary:hover {
-  background: rgba(204, 19, 137, 0.15);
-  border-color: #f0b8dc;
-}
 </style>

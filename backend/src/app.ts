@@ -12,7 +12,6 @@ import { sseManager } from './utils/sseManager';
 import monitorRoutes from './routes/monitorRoutes';
 import authRoutes from './routes/authRoutes';
 import notificationRoutes from './routes/notificationRoutes';
-import bulkImportRoutes from './routes/bulkImportRoutes';
 import jwt from 'jsonwebtoken';
 import { initJwtSecret, getJwtSecret } from './utils/jwtSecret';
 
@@ -77,7 +76,6 @@ app.get('/api/events', async (req: express.Request, res: express.Response) => {
 app.use('/api/monitors', monitorRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/bulk-import', bulkImportRoutes);
 
 // Central error handler: guarantees a response is sent when a route throws,
 // instead of leaving the request hanging until the client times out.

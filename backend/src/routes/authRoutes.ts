@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, register, me, updateNotificationSettings, updateProfile, verifyEmail, resendVerificationEmail, microsoftAuth, microsoftCallback } from '../controllers/authController';
+import { login, register, me, updateNotificationSettings, updateProfile, verifyEmail, resendVerificationEmail, microsoftAuth, microsoftCallback, microsoftExchange } from '../controllers/authController';
 import { authenticateToken } from '../utils/authMiddleware';
 import { loginRateLimiter, registerRateLimiter, resendVerificationRateLimiter } from '../middleware/rateLimiters';
 
@@ -16,5 +16,6 @@ router.patch('/profile', authenticateToken, updateProfile);
 // Microsoft OAuth routes
 router.get('/microsoft', microsoftAuth);
 router.get('/microsoft/callback', microsoftCallback);
+router.post('/microsoft/exchange', microsoftExchange);
 
 export default router;

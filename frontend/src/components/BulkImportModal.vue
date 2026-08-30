@@ -334,6 +334,43 @@ Ping Monitor,ping,192.168.1.1,,60,5000,network,`;
   window.URL.revokeObjectURL(url);
 }
 
+// RFC-4180-ish line parser: handles quoted fields (so a comma inside
+// "prod, critical" doesn't split the field), and "" as an escaped quote
+// inside a quoted field. A naive split(',') would misalign every column
+// after a quoted field containing a comma.
+function parseCsvLine(line: string): string[] {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        values.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+  values.push(current.trim());
+  return values;
+}
+
 async function parseAndPreview() {
   if (!selectedFile.value) return;
 
@@ -345,14 +382,14 @@ async function parseAndPreview() {
     return;
   }
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase());
   const monitors = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i]?.trim();
     if (!line) continue;
 
-    const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const values = parseCsvLine(line);
     const monitor: any = { errors: [], validation: 'valid' };
 
     headers.forEach((header, index) => {

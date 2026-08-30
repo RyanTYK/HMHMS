@@ -1,17 +1,14 @@
 <template>
   <div class="relative min-h-screen">
-    <!-- Background -->
     <div class="absolute inset-0">
       <img src="/background.png" alt="Background" class="w-full h-full object-cover" />
     </div>
 
     <!-- Foreground content -->
     <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-6">
-      <!-- Logo -->
       <div class="mb-8">
         <img src="/centific-logo.png" alt="Logo" class="w-20 h-20 object-contain" />
       </div>
-      <!-- Title -->
       <h1 class="text-4xl md:text-5xl text-white font-light mb-2">
         Welcome
       </h1>
@@ -22,7 +19,6 @@
       <!-- Form -->
       <form @submit.prevent="onSubmit" class="w-full max-w-md space-y-4">
 
-        <!-- Email -->
         <div>
   <div :class="['flex items-center bg-white/10 backdrop-blur-md text-white rounded-xl border transition-all placeholder-gray-400 mb-2 px-4 shadow-md', touched.email && errors.email ? 'border-pink-400' : 'border-white/20 focus-within:border-pink-400/40']">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -43,7 +39,6 @@
         <span v-if="touched.email && errors.email" class="text-pink-300 text-sm font-medium block mb-2 animate-slideDown">{{ errors.email }}</span>
         </div>
 
-        <!-- Password -->
         <div>
   <div :class="['flex items-center bg-white/10 backdrop-blur-md text-white rounded-xl border transition-all placeholder-gray-400 mb-2 px-4 shadow-md', touched.password && errors.password ? 'border-pink-400' : 'border-white/20 focus-within:border-pink-400/40']">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -73,20 +68,17 @@
         <span v-if="touched.password && errors.password" class="text-pink-300 text-sm font-medium block mb-4 animate-slideDown">{{ errors.password }}</span>
         </div>
 
-        <!-- Button -->
-        <button type="submit" @click="onSubmit" class="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-4 rounded-xl font-bold text-base tracking-wider transition-all shadow-lg mt-6 cursor-pointer relative z-10">
+        <button type="submit" class="w-full bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white py-4 rounded-xl font-bold text-base tracking-wider transition-all shadow-lg mt-6 cursor-pointer relative z-10">
           LOG IN
         </button>
 
-        <!-- Divider -->
         <div class="flex items-center my-6">
           <div class="flex-1 border-t border-white/20"></div>
           <span class="px-4 text-sm text-gray-400 italic">OR</span>
           <div class="flex-1 border-t border-white/20"></div>
         </div>
 
-        <!-- Microsoft SSO Button -->
-        <button 
+        <button
           type="button"
           @click="handleMicrosoftSSO"
           class="w-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/15 text-white py-4 rounded-xl font-semibold text-base transition-all shadow-md flex items-center justify-center gap-3"
@@ -100,7 +92,6 @@
           <span>Sign in with Microsoft</span>
         </button>
 
-        <!-- Footer link -->
         <p class="text-sm text-gray-300 text-center mt-5">
           <span class="italic">Don't have an account?</span>
           <router-link class="text-pink-500 hover:text-pink-400 font-semibold ml-1" to="/register">Sign up</router-link>
@@ -136,7 +127,6 @@ type ValidationErrors = {
 const errors = ref<ValidationErrors>({});
 const touched = ref<Record<string, boolean>>({});
 
-// Load saved email on mount
 onMounted(() => {
   const savedEmail = localStorage.getItem('lastLoginEmail');
   if (savedEmail) {
@@ -163,12 +153,11 @@ function validateEmail() {
 }
 
 function validatePassword() {
+  // No length check here: this is login, not registration, and a length
+  // minimum would lock out any account whose real password predates the
+  // rule. The backend is the source of truth for whether it's correct.
   if (!password.value || password.value.trim() === '') {
     errors.value.password = 'Password is required';
-    return false;
-  }
-  if (password.value.length < 8) {
-    errors.value.password = 'Password must be at least 8 characters';
     return false;
   }
   errors.value.password = undefined;
@@ -187,7 +176,6 @@ function markFieldTouched(field: string) {
   touched.value[field] = true;
 }
 
-// Watch fields for real-time validation
 watch(() => email.value, () => {
   if (touched.value.email) validateEmail();
 });
@@ -202,14 +190,12 @@ function focusPassword() {
 
 async function onSubmit() {
   error.value = '';
-  
-  // Mark all fields as touched
+
   touched.value = {
     email: true,
     password: true,
   };
 
-  // Validate entire form
   if (!validateForm()) {
     return;
   }
@@ -229,3 +215,20 @@ function handleMicrosoftSSO() {
   authStore.initiateMicrosoftSSO();
 }
 </script>
+
+<style scoped>
+/* Chrome/Edge/Safari paint autofilled inputs with their own opaque
+   background (white/light-blue), ignoring the page's own background-color -
+   the only reliable override is an inset box-shadow large enough to cover
+   the field, plus -webkit-text-fill-color since `color` is ignored too. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #141420 inset;
+  box-shadow: 0 0 0 1000px #141420 inset;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  transition: background-color 9999s ease-in-out 0s;
+}
+</style>

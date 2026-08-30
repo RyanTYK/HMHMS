@@ -47,7 +47,6 @@ export const useAuthStore = defineStore('auth', {
         if (res.ok) {
           this.user = await res.json();
         } else {
-          // Token is invalid - clear it
           this.logout();
           throw new Error('Invalid or expired token');
         }
@@ -116,7 +115,18 @@ export const useAuthStore = defineStore('auth', {
     initiateMicrosoftSSO() {
       window.location.href = '/api/auth/microsoft';
     },
-    
+
+    async exchangeMicrosoftCode(code: string) {
+      const res = await fetch('/api/auth/microsoft/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Sign-in failed');
+      const data = await res.json();
+      await this.setTokenAndFetchUser(data.token);
+    },
+
     async setTokenAndFetchUser(token: string) {
       this.token = token;
       localStorage.setItem('token', token);

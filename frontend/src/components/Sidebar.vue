@@ -203,13 +203,6 @@ function handleLogout() {
   position: relative;
 }
 
-.nav-link-sub {
-  padding-left: 48px;
-  margin-left: 8px;
-  font-size: 13px;
-  border-left: 2px solid #f0b8dc;
-}
-
 .nav-link:hover {
   background-color: transparent;
   color: #cc1389;
@@ -260,30 +253,6 @@ function handleLogout() {
 .nav-subsection {
   margin: 0;
   padding: 0;
-}
-
-.nav-subsection-nested {
-  margin: 0;
-}
-
-.nav-subsection-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px 8px 28px;
-  margin-top: 4px;
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.3px;
-  border-top: 1px solid #f3f4f6;
-}
-
-.nav-text-small {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
 }
 
 .nav-link-subsection {

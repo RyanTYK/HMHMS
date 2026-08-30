@@ -1,4 +1,10 @@
 @import 'tailwindcss';
+/* Tailwind v4 doesn't auto-load a legacy JS config - without this directive
+   tailwind.config.js's theme.extend (brand colors, shadow-soft/-brand,
+   animate-fade-in/-slide-up, etc.) silently does nothing, which is why
+   those utilities only ever worked via hand-duplicated plain CSS classes
+   elsewhere in this file and in manual-styles.css. */
+@config '../../tailwind.config.js';
 
 :root {
   --bg-color: #ffffff;

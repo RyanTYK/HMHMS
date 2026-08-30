@@ -199,6 +199,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 
 const name = ref('');
 const email = ref('');
@@ -213,6 +214,7 @@ const isResending = ref(false);
 const resendCooldown = ref(0);
 let cooldownTimer: number | null = null;
 const router = useRouter();
+const authStore = useAuthStore();
 
 async function onSubmit() {
   error.value = '';
@@ -295,8 +297,6 @@ async function resendVerification() {
 }
 
 function handleMicrosoftSSO() {
-  // Placeholder for Microsoft SSO implementation
-  // Will be implemented once Azure app registration is complete
-  console.log('Microsoft SSO - Coming Soon');
+  authStore.initiateMicrosoftSSO();
 }
 </script>

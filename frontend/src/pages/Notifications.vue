@@ -1,24 +1,31 @@
 <template>
   <div class="min-h-screen bg-white">
     <div class="max-w-7xl mx-auto px-6 py-8">
-      <!-- Header -->
       <header class="mb-8">
         <div class="flex items-center justify-between mb-6">
           <div>
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Notifications</h1>
             <p class="text-gray-600">Stay updated with monitor alerts</p>
           </div>
-          <button
-            v-if="unreadNotifications.length > 0"
-            @click="clearAllNotifications"
-            class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg transition-all font-medium border border-gray-200"
-          >
-            Clear All
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="unreadNotifications.length > 0"
+              @click="markAllAsRead"
+              class="px-4 py-2 text-pink-700 bg-white hover:bg-pink-50 rounded-lg transition-all font-medium border border-pink-200"
+            >
+              Mark All as Read
+            </button>
+            <button
+              v-if="unreadNotifications.length > 0"
+              @click="clearAllNotifications"
+              class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg transition-all font-medium border border-gray-200"
+            >
+              Clear All
+            </button>
+          </div>
         </div>
       </header>
 
-      <!-- Tabs -->
       <div class="flex items-center gap-2 mb-6 border-b border-pink-200">
         <button
           v-for="tab in tabs"
@@ -46,7 +53,6 @@
         </button>
       </div>
 
-      <!-- Notifications List -->
       <div v-if="!loading && filteredNotifications.length > 0" class="space-y-4">
         <div
           v-for="notification in filteredNotifications"
@@ -57,7 +63,6 @@
           ]"
           :style="!notification.is_read ? 'border-color: #f0b8dc;' : ''"
         >
-          <!-- Alert/System Notification -->
           <div class="p-4">
             <div class="flex items-start justify-between">
               <div class="flex items-start gap-4">
@@ -92,22 +97,33 @@
                   <span class="text-xs text-gray-500 mt-2 inline-block">{{ formatDate(notification.created_at) }}</span>
                 </div>
               </div>
-              <button
-                @click="deleteNotification(notification.id)"
-                class="text-gray-400 hover:text-red-600"
-                title="Delete"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
+              <div class="flex items-center gap-3">
+                <button
+                  v-if="!notification.is_read"
+                  @click="markAsRead(notification.id)"
+                  class="text-gray-400 hover:text-pink-600"
+                  title="Mark as read"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </button>
+                <button
+                  @click="deleteNotification(notification.id)"
+                  class="text-gray-400 hover:text-red-600"
+                  title="Delete"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Empty State -->
       <div
         v-else-if="!loading && filteredNotifications.length === 0"
         class="p-12 text-center"
@@ -122,7 +138,6 @@
         <p class="text-gray-600">You're all caught up!</p>
       </div>
 
-      <!-- Loading State -->
       <div v-if="loading" class="space-y-4 animate-pulse">
         <div
           v-for="n in 4"

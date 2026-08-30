@@ -6,24 +6,58 @@ import { CheckLog } from '../models/CheckLog';
 import { User } from '../models/User';
 import { v4 as uuidv4 } from 'uuid';
 import { runCheck, sendNotification, sendTestNotificationEmail, verifySMTPTransport } from '../services/checkEngine';
-import { LessThan } from 'typeorm';
+import { LessThan, In } from 'typeorm';
+import { getLatestCheckLogs } from '../utils/latestCheckLogs';
+
+function rangeToFromDate(range: string | undefined): Date | undefined {
+  if (!range) return undefined;
+  const now = Date.now();
+  const spans: Record<string, number> = {
+    '1h': 60 * 60 * 1000,
+    '6h': 6 * 60 * 60 * 1000,
+    '24h': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000,
+  };
+  const span = spans[range];
+  return span ? new Date(now - span) : undefined;
+}
+
+async function setMonitorPaused(req: Request, res: Response, is_paused: boolean) {
+  try {
+    const repo = AppDataSource.getRepository(Monitor);
+    const userId = (req as any).user?.id as number;
+    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
+
+    if (!monitor) {
+      return res.status(404).json({ error: 'Monitor not found' });
+    }
+
+    monitor.is_paused = is_paused;
+    await repo.save(monitor);
+
+    sseManager.broadcastMonitors(userId);
+
+    res.json({ message: `Monitor ${is_paused ? 'paused' : 'resumed'} successfully`, monitor });
+  } catch (error: any) {
+    console.error(`Error ${is_paused ? 'pausing' : 'resuming'} monitor:`, error);
+    res.status(500).json({ error: error.message || `Failed to ${is_paused ? 'pause' : 'resume'} monitor` });
+  }
+}
 
 export const getMonitors = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
-  const logRepo = AppDataSource.getRepository(CheckLog);
   const userId = (req as any).user?.id as number;
   const monitors = await repo.find({ where: { user_id: userId } });
-  // Attach last status and last_check timestamp
-  const withStatus = await Promise.all(
-    monitors.map(async (m) => {
-      const last = await logRepo.findOne({ where: { monitor_id: m.id }, order: { timestamp: 'DESC' } });
-      return {
-        ...m,
-        last_check: last?.timestamp || null,
-        last_status: last?.status || null,
-      };
-    })
-  );
+  const latestLogs = await getLatestCheckLogs(monitors.map(m => m.id));
+  const withStatus = monitors.map((m) => {
+    const last = latestLogs.get(m.id);
+    return {
+      ...m,
+      last_check: last?.timestamp || null,
+      last_status: last?.status || null,
+    };
+  });
   res.json(withStatus);
 };
 
@@ -33,19 +67,19 @@ export const getMonitor = async (req: Request, res: Response) => {
   const userId = (req as any).user?.id as number;
   const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
   if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
-  
+
   // Get the latest log entry to include last check time and status
-  const lastLog = await logRepo.findOne({ 
-    where: { monitor_id: monitor.id }, 
-    order: { timestamp: 'DESC' } 
+  const lastLog = await logRepo.findOne({
+    where: { monitor_id: monitor.id },
+    order: { timestamp: 'DESC' }
   });
-  
+
   const result = {
     ...monitor,
     lastChecked: lastLog?.timestamp || null,
     status: lastLog?.status || 'unknown'
   };
-  
+
   res.json(result);
 };
 
@@ -73,14 +107,14 @@ export const createMonitor = async (req: Request, res: Response) => {
     notify_owner: notify_owner ?? true,
   });
   await repo.save(monitor);
-  
+
   // Perform an initial check asynchronously (non-blocking) after creation
   (async () => {
     try {
       console.log(`Performing initial check for new monitor ${monitor.id} (${monitor.name})`);
       await runCheck(monitor);
       console.log(`Initial check completed for ${monitor.id}`);
-      
+
       // Broadcast SSE update after initial check
       setTimeout(() => sseManager.broadcastMonitors(userId), 100);
     } catch (e: any) {
@@ -97,7 +131,7 @@ export const createMonitor = async (req: Request, res: Response) => {
       console.error(`Failed to set last_check for new monitor ${monitor.id}:`, err?.message || err);
     }
   })();
-  
+
   // Return response immediately without waiting for check
   res.status(201).json(monitor);
 };
@@ -124,9 +158,17 @@ export const updateMonitor = async (req: Request, res: Response) => {
     if (rawBody[field] !== undefined) body[field] = rawBody[field];
   }
   if (body.type && !['http', 'tcp', 'ping', 'smb'].includes(body.type as string)) return res.status(400).json({ error: 'invalid type' });
-  if ((body.type === 'tcp' || monitor.type === 'tcp') && body.port === undefined && monitor.port == null) {
-    // ensure port remains present for tcp
-    return res.status(400).json({ error: 'port required for tcp monitors' });
+  const resultingType = (body.type as string | undefined) ?? monitor.type;
+  if (resultingType === 'tcp') {
+    // Checking `'port' in body` (not `body.port === undefined`) so an
+    // explicit `{ port: null }` is caught too - the old check only guarded
+    // against an omitted field, letting a client null out a tcp monitor's
+    // port and have every future check silently fail instead of the update
+    // itself being rejected.
+    const resultingPort = 'port' in body ? body.port : monitor.port;
+    if (typeof resultingPort !== 'number' || resultingPort < 1 || resultingPort > 65535) {
+      return res.status(400).json({ error: 'tcp monitors require a valid port (1-65535)' });
+    }
   }
   repo.merge(monitor, body);
   await repo.save(monitor);
@@ -142,7 +184,6 @@ export const deleteMonitor = async (req: Request, res: Response) => {
   res.status(204).send();
 };
 
-// Send a test email to all configured recipients for a monitor
 export const sendTestEmail = async (req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Monitor);
@@ -151,8 +192,7 @@ export const sendTestEmail = async (req: Request, res: Response) => {
     if (!monitor) return res.status(404).json({ error: 'Monitor not found' });
 
     const emailList: string[] = [];
-    
-    // Add owner's email if notify_owner is enabled
+
     if (monitor.notify_owner) {
       const userRepo = AppDataSource.getRepository(User);
       const owner = await userRepo.findOne({ where: { id: monitor.user_id } });
@@ -160,8 +200,7 @@ export const sendTestEmail = async (req: Request, res: Response) => {
         emailList.push(owner.email);
       }
     }
-    
-    // Add additional recipients if configured
+
     if (monitor.email_recipients) {
       const additionalEmails = monitor.email_recipients
         .split(',')
@@ -174,7 +213,6 @@ export const sendTestEmail = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No email recipients configured for this monitor' });
     }
 
-    // Send test notifications
     for (const email of emailList) {
       await sendTestNotificationEmail(monitor, email);
     }
@@ -201,23 +239,15 @@ export const getLogs = async (req: Request, res: Response) => {
   // Ensure the monitor belongs to this user
   const owned = await repo.exists({ where: { id, user_id: userId } });
   if (!owned) return res.status(404).json({ error: 'Monitor not found' });
-  
+
   const qb = logRepo
     .createQueryBuilder('log')
     .where('log.monitor_id = :id', { id })
     .orderBy('log.timestamp', 'ASC');
 
-  if (range) {
-    const now = new Date();
-    let fromDate;
-    if (range === '1h') fromDate = new Date(now.getTime() - 60 * 60 * 1000);
-    else if (range === '6h') fromDate = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-    else if (range === '24h') fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    else if (range === '7d') fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    if (fromDate) {
-      qb.andWhere('log.timestamp >= :fromDate', { fromDate });
-    }
+  const fromDate = rangeToFromDate(range);
+  if (fromDate) {
+    qb.andWhere('log.timestamp >= :fromDate', { fromDate });
   }
 
   if (limit) {
@@ -240,19 +270,17 @@ export const checkNow = async (req: Request, res: Response) => {
     console.log(`Manual check for monitor ${monitor.id} (${monitor.name})`);
     await runCheck(monitor);
     console.log(`Check completed for ${monitor.id}`);
-    
-    // Broadcast check completion and monitor update after manual check
+
   sseManager.broadcastCheckComplete((req as any).user?.id, monitor.id);
   setTimeout(() => sseManager.broadcastMonitors((req as any).user?.id), 100);
-    
+
     res.json({ ok: true });
   } catch (e: any) {
     console.error(`Check failed for ${monitor.id}:`, e.message);
-    
-    // Still broadcast check completion and monitor update with the failed check result
+
   sseManager.broadcastCheckComplete((req as any).user?.id, monitor.id);
   setTimeout(() => sseManager.broadcastMonitors((req as any).user?.id), 100);
-    
+
     res.status(500).json({ error: e?.message || 'Failed to run check' });
   }
 };
@@ -260,6 +288,10 @@ export const checkNow = async (req: Request, res: Response) => {
 export const bulkImport = async (req: Request, res: Response) => {
   const monitors = req.body || [];
   if (!Array.isArray(monitors)) return res.status(400).json({ error: 'Expected array of monitors' });
+  const MAX_BULK_IMPORT = 500;
+  if (monitors.length > MAX_BULK_IMPORT) {
+    return res.status(400).json({ error: `Cannot import more than ${MAX_BULK_IMPORT} monitors at once` });
+  }
 
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
@@ -298,7 +330,6 @@ export const bulkImport = async (req: Request, res: Response) => {
       await repo.save(monitor);
       results.created++;
 
-      // Run initial check asynchronously (non-blocking)
       runCheck(monitor).catch(e => {
         console.error(`Initial check failed for ${monitor.id}:`, e.message);
       });
@@ -307,7 +338,6 @@ export const bulkImport = async (req: Request, res: Response) => {
     }
   }
 
-  // Broadcast SSE update after bulk import
   setTimeout(() => sseManager.broadcastMonitors(userId), 100);
 
   res.json(results);
@@ -328,7 +358,12 @@ function csvCell(value: unknown): string {
 export const exportCSV = async (req: Request, res: Response) => {
   const repo = AppDataSource.getRepository(Monitor);
   const userId = (req as any).user?.id as number;
-  const monitors = await repo.find({ where: { user_id: userId } });
+  const idsParam = req.query.ids;
+  const where: Record<string, unknown> = { user_id: userId };
+  if (typeof idsParam === 'string' && idsParam.trim()) {
+    where.id = In(idsParam.split(',').map(id => id.trim()).filter(Boolean));
+  }
+  const monitors = await repo.find({ where });
 
   const csvHeader = 'name,type,target,port,interval_seconds,timeout_ms,active,is_paused,tags,dependency,email_recipients,notify_owner,retry_interval,max_retries,notification_resend_after\n';
   const csvRows = monitors.map(m =>
@@ -346,7 +381,7 @@ export const cleanOldLogs = async (retentionDays?: number) => {
   const logRepo = AppDataSource.getRepository(CheckLog);
   const days = retentionDays || parseInt(process.env.LOG_RETENTION_DAYS || '7');
   const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-  
+
   try {
     const result = await logRepo.delete({ timestamp: LessThan(cutoffDate) });
     console.log(`[MonitorController] Cleaned ${result.affected || 0} log entries older than ${days} days (cutoff: ${cutoffDate.toISOString()})`);
@@ -357,59 +392,10 @@ export const cleanOldLogs = async (retentionDays?: number) => {
   }
 };
 
-/**
- * Pause a monitor
- */
-export const pauseMonitor = async (req: Request, res: Response) => {
-  try {
-    const repo = AppDataSource.getRepository(Monitor);
-    const userId = (req as any).user?.id as number;
-    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
-    
-    if (!monitor) {
-      return res.status(404).json({ error: 'Monitor not found' });
-    }
+export const pauseMonitor = async (req: Request, res: Response) => setMonitorPaused(req, res, true);
 
-    monitor.is_paused = true;
-    await repo.save(monitor);
-    
-    sseManager.broadcastMonitors(userId);
-    
-    res.json({ message: 'Monitor paused successfully', monitor });
-  } catch (error: any) {
-    console.error('Error pausing monitor:', error);
-    res.status(500).json({ error: error.message || 'Failed to pause monitor' });
-  }
-};
+export const resumeMonitor = async (req: Request, res: Response) => setMonitorPaused(req, res, false);
 
-/**
- * Resume a monitor
- */
-export const resumeMonitor = async (req: Request, res: Response) => {
-  try {
-    const repo = AppDataSource.getRepository(Monitor);
-    const userId = (req as any).user?.id as number;
-    const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
-    
-    if (!monitor) {
-      return res.status(404).json({ error: 'Monitor not found' });
-    }
-
-    monitor.is_paused = false;
-    await repo.save(monitor);
-    
-    sseManager.broadcastMonitors(userId);
-    
-    res.json({ message: 'Monitor resumed successfully', monitor });
-  } catch (error: any) {
-    console.error('Error resuming monitor:', error);
-    res.status(500).json({ error: error.message || 'Failed to resume monitor' });
-  }
-};
-
-/**
- * Get monitor response time history
- */
 export const getResponseHistory = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -417,13 +403,13 @@ export const getResponseHistory = async (req: Request, res: Response) => {
     const logRepo = AppDataSource.getRepository(CheckLog);
     const repo = AppDataSource.getRepository(Monitor);
     const userId = (req as any).user?.id as number;
-    
+
     // Ensure the monitor belongs to this user
     const owned = await repo.exists({ where: { id, user_id: userId } });
     if (!owned) {
       return res.status(404).json({ error: 'Monitor not found' });
     }
-    
+
     const qb = logRepo
       .createQueryBuilder('log')
       .where('log.monitor_id = :id', { id })
@@ -431,14 +417,7 @@ export const getResponseHistory = async (req: Request, res: Response) => {
       .orderBy('log.timestamp', 'ASC');
 
     if (range) {
-      const now = new Date();
-      let fromDate;
-      if (range === '1h') fromDate = new Date(now.getTime() - 60 * 60 * 1000);
-      else if (range === '6h') fromDate = new Date(now.getTime() - 6 * 60 * 60 * 1000);
-      else if (range === '24h') fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      else if (range === '7d') fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      else if (range === '30d') fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      
+      const fromDate = rangeToFromDate(range);
       if (fromDate) {
         qb.andWhere('log.timestamp >= :fromDate', { fromDate });
       }
@@ -447,13 +426,13 @@ export const getResponseHistory = async (req: Request, res: Response) => {
     }
 
     const logs = await qb.getMany();
-    
+
     const history = logs.map(log => ({
       timestamp: log.timestamp,
       responseTime: log.response_time_ms,
       status: log.status
     }));
-    
+
     res.json({ history });
   } catch (error: any) {
     console.error('Error fetching response history:', error);
@@ -461,15 +440,12 @@ export const getResponseHistory = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Send manual notification
- */
 export const sendManualNotification = async (req: Request, res: Response) => {
   try {
     const repo = AppDataSource.getRepository(Monitor);
     const userId = (req as any).user?.id as number;
     const monitor = await repo.findOne({ where: { id: req.params.id, user_id: userId } });
-    
+
     if (!monitor) {
       return res.status(404).json({ error: 'Monitor not found' });
     }
@@ -487,8 +463,9 @@ export const sendManualNotification = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No email recipients configured for this monitor' });
     }
 
+    const status = monitor.last_status === 'up' ? 'up' : 'down';
     for (const email of emailList) {
-      await sendNotification(monitor, 'down', email);
+      await sendNotification(monitor, status, email);
     }
 
     res.json({ message: 'Notification sent successfully', sent: emailList.length });
