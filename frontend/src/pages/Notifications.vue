@@ -26,36 +26,30 @@
         </div>
       </header>
 
-      <div class="flex items-center gap-2 mb-6 border-b border-pink-200">
+      <div v-if="!loading && notificationsStore.notifications.length > 0" class="flex items-center gap-3 mb-4">
+        <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" class="w-4 h-4 shrink-0 rounded border-gray-300 accent-pink-600 cursor-pointer" />
+          Select All
+        </label>
         <button
-          v-for="tab in tabs"
-          :key="tab.value"
-          @click="activeTab = tab.value"
-          :class="[
-            'px-6 py-3 font-medium text-sm transition-all border-b-2 rounded-t-lg flex items-center gap-2',
-            activeTab === tab.value
-              ? 'text-pink-700 border-pink-600 bg-gradient-to-b from-pink-50 to-white'
-              : 'text-gray-600 border-transparent hover:text-pink-600 hover:bg-pink-50'
-          ]"
+          :disabled="selectedIds.length === 0"
+          @click="markSelectedAsRead"
+          class="px-3 py-1.5 text-sm text-pink-700 bg-white hover:bg-pink-50 rounded-lg transition-all font-medium border border-pink-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
         >
-          {{ tab.label }}
-          <span
-            v-if="tab.count > 0"
-            :class="[
-              'px-2.5 py-1 rounded-full text-xs font-semibold min-w-[24px] text-center',
-              activeTab === tab.value
-                ? 'bg-gradient-to-br from-pink-100 to-pink-200 text-pink-700'
-                : 'bg-gray-100 text-gray-600'
-            ]"
-          >
-            {{ tab.count }}
-          </span>
+          Mark Selected as Read
+        </button>
+        <button
+          :disabled="selectedIds.length === 0"
+          @click="deleteSelected"
+          class="px-3 py-1.5 text-sm text-gray-700 bg-white hover:bg-red-50 hover:text-red-600 rounded-lg transition-all font-medium border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700"
+        >
+          Delete Selected
         </button>
       </div>
 
-      <div v-if="!loading && filteredNotifications.length > 0" class="space-y-4">
+      <div v-if="!loading && notificationsStore.notifications.length > 0" class="space-y-4">
         <div
-          v-for="notification in filteredNotifications"
+          v-for="notification in notificationsStore.notifications"
           :key="notification.id"
           :class="[
             'bg-white rounded-lg shadow-md border transition-all hover:shadow-lg',
@@ -66,6 +60,12 @@
           <div class="p-4">
             <div class="flex items-start justify-between">
               <div class="flex items-start gap-4">
+                <input
+                  type="checkbox"
+                  :checked="selectedIds.includes(notification.id)"
+                  @change="toggleSelect(notification.id)"
+                  class="w-4 h-4 shrink-0 self-center rounded border-gray-300 accent-pink-600 cursor-pointer"
+                />
                 <div
                   :class="[
                     'w-12 h-12 rounded-full flex items-center justify-center',
@@ -125,7 +125,7 @@
       </div>
 
       <div
-        v-else-if="!loading && filteredNotifications.length === 0"
+        v-else-if="!loading && notificationsStore.notifications.length === 0"
         class="p-12 text-center"
       >
         <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-pink-50 to-pink-100 flex items-center justify-center">
@@ -164,22 +164,46 @@ import { useNotificationsStore } from '../stores/notifications';
 
 const notificationsStore = useNotificationsStore();
 
-const activeTab = ref('all');
 const loading = ref(false);
 
-const tabs = computed(() => [
-  { label: 'All', value: 'all', count: notificationsStore.notifications.length },
-  { label: 'Alerts', value: 'alert', count: notificationsStore.alertNotifications.length },
-]);
-
-const filteredNotifications = computed(() => {
-  if (activeTab.value === 'all') {
-    return notificationsStore.notifications;
-  }
-  return notificationsStore.notifications.filter((n) => n.type === activeTab.value);
-});
-
 const unreadNotifications = computed(() => notificationsStore.unreadNotifications);
+
+const selectedIds = ref<number[]>([]);
+
+const allSelected = computed(() =>
+  notificationsStore.notifications.length > 0 &&
+  selectedIds.value.length === notificationsStore.notifications.length
+);
+
+function toggleSelectAll() {
+  selectedIds.value = allSelected.value
+    ? []
+    : notificationsStore.notifications.map(n => n.id);
+}
+
+function toggleSelect(id: number) {
+  selectedIds.value = selectedIds.value.includes(id)
+    ? selectedIds.value.filter(i => i !== id)
+    : [...selectedIds.value, id];
+}
+
+const markSelectedAsRead = async () => {
+  try {
+    await Promise.all(selectedIds.value.map(id => notificationsStore.markAsRead(id)));
+    selectedIds.value = [];
+  } catch (error) {
+    console.error('Failed to mark selected as read:', error);
+  }
+};
+
+const deleteSelected = async () => {
+  try {
+    await Promise.all(selectedIds.value.map(id => notificationsStore.deleteNotification(id)));
+    selectedIds.value = [];
+  } catch (error) {
+    console.error('Failed to delete selected notifications:', error);
+  }
+};
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -240,3 +264,18 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+/* manual-styles.css sets a global unlayered `input, select, textarea { width:
+   100%; padding: .75rem 1rem; ... }` reset that Tailwind's layered utility
+   classes (w-4, p-0, etc.) can never win against regardless of specificity -
+   unlayered CSS always beats layered CSS. !important is the only override. */
+input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 4px !important;
+  flex-shrink: 0;
+}
+</style>

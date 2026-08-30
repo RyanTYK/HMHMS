@@ -69,9 +69,9 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div
             class="bg-white rounded-lg p-6 border transition-all hover:shadow-lg cursor-pointer"
-            :class="filterStatus === 'up' ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
-            @click="toggleStatusFilter('up')"
-            :title="filterStatus === 'up' ? 'Showing UP only - click to clear' : 'Show UP monitors only'"
+            :class="filterStatus.includes('up') ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
+            @click="toggleStatusFilterValue('up')"
+            :title="filterStatus.includes('up') ? 'Showing UP - click to toggle off' : 'Toggle UP monitors in the filter'"
           >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-600">UP</span>
@@ -84,9 +84,9 @@
 
           <div
             class="bg-white rounded-lg p-6 border transition-all hover:shadow-lg cursor-pointer"
-            :class="filterStatus === 'down' ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
-            @click="toggleStatusFilter('down')"
-            :title="filterStatus === 'down' ? 'Showing DOWN only - click to clear' : 'Show DOWN monitors only'"
+            :class="filterStatus.includes('down') ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
+            @click="toggleStatusFilterValue('down')"
+            :title="filterStatus.includes('down') ? 'Showing DOWN - click to toggle off' : 'Toggle DOWN monitors in the filter'"
           >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-600">DOWN</span>
@@ -99,9 +99,9 @@
 
           <div
             class="bg-white rounded-lg p-6 border transition-all hover:shadow-lg cursor-pointer"
-            :class="filterState === 'paused' ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
-            @click="togglePausedFilter"
-            :title="filterState === 'paused' ? 'Showing paused only - click to clear' : 'Show paused monitors only'"
+            :class="filterState.includes('paused') ? 'border-pink-400 ring-2 ring-pink-200' : 'border-gray-200'"
+            @click="toggleStateFilterValue('paused')"
+            :title="filterState.includes('paused') ? 'Showing paused - click to toggle off' : 'Toggle paused monitors in the filter'"
           >
             <div class="flex items-center justify-between mb-2">
               <span class="text-sm font-medium text-gray-600">PAUSED</span>
@@ -165,41 +165,22 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <polyline points="6 9 12 15 18 9" stroke-width="2"></polyline>
                 </svg>
-                {{ filterType || 'Type' }}
+                {{ filterLabel(filterType, 'Type') }}
               </button>
-              <div 
-                v-if="showTypeDropdown" 
-                class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]"
+              <div
+                v-if="showTypeDropdown"
+                class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[140px] py-1"
               >
-                <button 
-                  @click="filterType = ''; showTypeDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg"
+                <label v-for="t in ['PING', 'HTTP', 'TCP', 'SMB']" :key="t" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" :checked="filterType.includes(t)" @change="toggleTypeFilter(t)" class="w-4 h-4 shrink-0 rounded border-gray-300 accent-pink-600 cursor-pointer" />
+                  {{ t }}
+                </label>
+                <button
+                  v-if="filterType.length"
+                  @click="filterType = []; showTypeDropdown = false"
+                  class="w-full text-left px-4 py-2 text-sm text-pink-600 hover:bg-gray-50 border-t border-gray-100 mt-1"
                 >
-                  All
-                </button>
-                <button 
-                  @click="filterType = 'PING'; showTypeDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  PING
-                </button>
-                <button 
-                  @click="filterType = 'HTTP'; showTypeDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  HTTP
-                </button>
-                <button 
-                  @click="filterType = 'TCP'; showTypeDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  TCP
-                </button>
-                <button 
-                  @click="filterType = 'SMB'; showTypeDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 last:rounded-b-lg"
-                >
-                  SMB
+                  Clear
                 </button>
               </div>
             </div>
@@ -213,35 +194,22 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <polyline points="6 9 12 15 18 9" stroke-width="2"></polyline>
                 </svg>
-                {{ filterStatus ? filterStatus.toUpperCase() : 'Status' }}
+                {{ filterLabel(filterStatus, 'Status', v => v.toUpperCase()) }}
               </button>
-              <div 
-                v-if="showStatusDropdown" 
-                class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]"
+              <div
+                v-if="showStatusDropdown"
+                class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[140px] py-1"
               >
-                <button 
-                  @click="filterStatus = ''; showStatusDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg"
-                >
-                  All
-                </button>
-                <button 
-                  @click="filterStatus = 'up'; showStatusDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  UP
-                </button>
+                <label v-for="s in ['up', 'down', 'unknown']" :key="s" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" :checked="filterStatus.includes(s)" @change="toggleStatusFilterValue(s)" class="w-4 h-4 shrink-0 rounded border-gray-300 accent-pink-600 cursor-pointer" />
+                  {{ s.toUpperCase() }}
+                </label>
                 <button
-                  @click="filterStatus = 'down'; showStatusDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  v-if="filterStatus.length"
+                  @click="filterStatus = []; showStatusDropdown = false"
+                  class="w-full text-left px-4 py-2 text-sm text-pink-600 hover:bg-gray-50 border-t border-gray-100 mt-1"
                 >
-                  DOWN
-                </button>
-                <button
-                  @click="filterStatus = 'unknown'; showStatusDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 last:rounded-b-lg"
-                >
-                  UNKNOWN
+                  Clear
                 </button>
               </div>
             </div>
@@ -255,29 +223,22 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <polyline points="6 9 12 15 18 9" stroke-width="2"></polyline>
                 </svg>
-                {{ filterState ? (filterState === 'active' ? 'Active' : 'Paused') : 'State' }}
+                {{ filterLabel(filterState, 'State', v => v === 'active' ? 'Active' : 'Paused') }}
               </button>
-              <div 
-                v-if="showStateDropdown" 
-                class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]"
+              <div
+                v-if="showStateDropdown"
+                class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[140px] py-1"
               >
-                <button 
-                  @click="filterState = ''; showStateDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 first:rounded-t-lg"
+                <label v-for="s in ['active', 'paused']" :key="s" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" :checked="filterState.includes(s)" @change="toggleStateFilterValue(s)" class="w-4 h-4 shrink-0 rounded border-gray-300 accent-pink-600 cursor-pointer" />
+                  {{ s === 'active' ? 'Active' : 'Paused' }}
+                </label>
+                <button
+                  v-if="filterState.length"
+                  @click="filterState = []; showStateDropdown = false"
+                  class="w-full text-left px-4 py-2 text-sm text-pink-600 hover:bg-gray-50 border-t border-gray-100 mt-1"
                 >
-                  All
-                </button>
-                <button 
-                  @click="filterState = 'active'; showStateDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  Active
-                </button>
-                <button 
-                  @click="filterState = 'paused'; showStateDropdown = false"
-                  class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 last:rounded-b-lg"
-                >
-                  Paused
+                  Clear
                 </button>
               </div>
             </div>
@@ -669,7 +630,7 @@
       <!-- Empty State -->
       <div v-else-if="!store.loading && !filteredMonitors.length" class="bg-white rounded-xl py-20 px-8">
         <!-- No results from search/filters -->
-        <div v-if="searchText || filterType || filterStatus || filterState" class="text-center max-w-md mx-auto">
+        <div v-if="searchText || filterType.length || filterStatus.length || filterState.length" class="text-center max-w-md mx-auto">
           <div class="w-20 h-20 bg-pink-50 rounded-full mx-auto mb-6 flex items-center justify-center">
             <svg class="w-10 h-10 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -723,7 +684,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import MonitorForm from '../components/MonitorForm.vue';
 import BulkImportModal from '../components/BulkImportModal.vue';
@@ -764,9 +725,9 @@ function closeConfirm() {
   confirmTarget.value = null;
 }
 
-const filterType = ref('');
-const filterStatus = ref('');
-const filterState = ref('');
+const filterType = ref<string[]>([]);
+const filterStatus = ref<string[]>([]);
+const filterState = ref<string[]>([]);
 const searchText = ref('');
 const showTypeDropdown = ref(false);
 const showStatusDropdown = ref(false);
@@ -809,11 +770,27 @@ function closeAllDropdowns() {
 }
 
 function clearFilters() {
-  filterType.value = '';
-  filterStatus.value = '';
-  filterState.value = '';
+  filterType.value = [];
+  filterStatus.value = [];
+  filterState.value = [];
   searchText.value = '';
   closeAllDropdowns();
+}
+
+function toggleArrayValue(arr: Ref<string[]>, value: string) {
+  arr.value = arr.value.includes(value)
+    ? arr.value.filter(v => v !== value)
+    : [...arr.value, value];
+}
+
+function toggleTypeFilter(value: string) { toggleArrayValue(filterType, value); }
+function toggleStatusFilterValue(value: string) { toggleArrayValue(filterStatus, value); }
+function toggleStateFilterValue(value: string) { toggleArrayValue(filterState, value); }
+
+function filterLabel(selected: string[], fallback: string, format: (v: string) => string = (v) => v) {
+  if (selected.length === 0) return fallback;
+  if (selected.length <= 2) return selected.map(format).join(', ');
+  return `${selected.length} selected`;
 }
 
 const sortedMonitors = computed(() => {
@@ -846,18 +823,21 @@ const sortedMonitors = computed(() => {
 
 const filteredMonitors = computed(() => {
   let monitors = sortedMonitors.value;
-  if (filterType.value) {
-    monitors = monitors.filter(m => m.type.toLowerCase() === filterType.value.toLowerCase());
+  if (filterType.value.length) {
+    const types = filterType.value.map(t => t.toLowerCase());
+    monitors = monitors.filter(m => types.includes(m.type.toLowerCase()));
   }
-  if (filterStatus.value) {
-    monitors = monitors.filter(m => (m.last_status || '').toLowerCase() === filterStatus.value);
+  if (filterStatus.value.length) {
+    // Monitors with no last_status yet are "unknown" - normalize before
+    // comparing so the Unknown filter actually matches them (an empty
+    // string will never equal the literal 'unknown').
+    monitors = monitors.filter(m => filterStatus.value.includes((m.last_status || 'unknown').toLowerCase()));
   }
-  if (filterState.value) {
-    if (filterState.value === 'active') {
-      monitors = monitors.filter(m => !(m as any).is_paused && (m as any).active !== false);
-    } else if (filterState.value === 'paused') {
-      monitors = monitors.filter(m => (m as any).is_paused || (m as any).active === false);
-    }
+  if (filterState.value.length) {
+    monitors = monitors.filter(m => {
+      const isPaused = (m as any).is_paused || (m as any).active === false;
+      return filterState.value.includes(isPaused ? 'paused' : 'active');
+    });
   }
   if (searchText.value) {
     const text = searchText.value.toLowerCase();
@@ -1016,12 +996,6 @@ async function exportCSVSelected() {
   await store.exportCSV(selectedMonitors.value);
 }
 
-function toggleStatusFilter(status: 'up' | 'down') {
-  filterStatus.value = filterStatus.value === status ? '' : status;
-}
-function togglePausedFilter() {
-  filterState.value = filterState.value === 'paused' ? '' : 'paused';
-}
 async function enrichSparklines() {
   await Promise.all(store.items.map(async (m: any) => {
     try {
@@ -1203,5 +1177,21 @@ table thead tr {
 table thead th {
   background-color: white !important;
   background-image: none !important;
+}
+</style>
+
+<style scoped>
+/* manual-styles.css sets a global unlayered `input, select, textarea { width:
+   100%; padding: .75rem 1rem; ... }` reset that Tailwind's layered utility
+   classes (w-4, p-0, etc.) can never win against regardless of specificity -
+   unlayered CSS always beats layered CSS. !important is the only thing that
+   overrides it (matches the pattern already used above for the table header). */
+input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 4px !important;
+  flex-shrink: 0;
 }
 </style>
