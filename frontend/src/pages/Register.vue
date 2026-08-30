@@ -169,7 +169,7 @@
         </div>
 
         <!-- Microsoft SSO Button -->
-        <button 
+        <button
           type="button"
           @click="handleMicrosoftSSO"
           :disabled="isLoading"
@@ -300,3 +300,20 @@ function handleMicrosoftSSO() {
   authStore.initiateMicrosoftSSO();
 }
 </script>
+
+<style scoped>
+/* Chrome/Edge/Safari paint autofilled inputs with their own opaque
+   background (white/light-blue), ignoring the page's own background-color -
+   the only reliable override is an inset box-shadow large enough to cover
+   the field, plus -webkit-text-fill-color since `color` is ignored too. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #141420 inset;
+  box-shadow: 0 0 0 1000px #141420 inset;
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  transition: background-color 9999s ease-in-out 0s;
+}
+</style>

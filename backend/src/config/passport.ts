@@ -28,12 +28,14 @@ interface MicrosoftProfile {
 // configured. passport-oauth2 throws synchronously (crashing the process) if
 // constructed with an empty clientID, and MICROSOFT_CLIENT_ID/SECRET are
 // blank by default in .env.example.
-if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
+export const isMicrosoftSSOEnabled = Boolean(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET);
+
+if (isMicrosoftSSOEnabled) {
   passport.use(
     new MicrosoftStrategy(
       {
-      clientID: process.env.MICROSOFT_CLIENT_ID,
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+      clientID: process.env.MICROSOFT_CLIENT_ID!,
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
       callbackURL: process.env.MICROSOFT_CALLBACK_URL || 'http://localhost:3000/auth/microsoft/callback',
       scope: ['user.read', 'openid', 'profile', 'email'],
       tenant: process.env.MICROSOFT_TENANT_ID || 'common', // 'common' allows any Microsoft account

@@ -266,6 +266,15 @@ MAX_CONCURRENT_CHECKS=60        # keep this above (active monitors / 2)
 LOG_RETENTION_DAYS=7
 ```
 
+### Debug Logging
+
+Off by default. Set any of these to `true` in `.env` and restart for verbose logging from that part of the stack:
+```env
+API_DEBUG=false      # backend API request/SSE noise
+WORKER_DEBUG=false   # background check details
+SMTP_DEBUG=false     # mail transport handshake
+```
+
 ---
 
 ## Day-to-Day Operations

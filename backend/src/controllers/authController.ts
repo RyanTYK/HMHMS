@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { generateVerificationToken, sendVerificationEmail } from '../services/emailService';
-import passport from '../config/passport';
+import passport, { isMicrosoftSSOEnabled } from '../config/passport';
 import { getJwtSecret } from '../utils/jwtSecret';
 
 // Short-lived, single-use codes for the OAuth redirect handoff, so the JWT
@@ -253,11 +253,22 @@ export const resendVerificationEmail = async (req: Request, res: Response) => {
   }
 };
 
-export const microsoftAuth = passport.authenticate('microsoft', {
-  session: false,
-});
+function requireMicrosoftSSO(req: Request, res: Response, next: () => void) {
+  if (!isMicrosoftSSOEnabled) {
+    return res.status(503).json({ error: 'Microsoft sign-in is not configured on this server.' });
+  }
+  next();
+}
+
+export const microsoftAuth = [
+  requireMicrosoftSSO,
+  passport.authenticate('microsoft', {
+    session: false,
+  }),
+];
 
 export const microsoftCallback = [
+  requireMicrosoftSSO,
   passport.authenticate('microsoft', {
     session: false,
     failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`
