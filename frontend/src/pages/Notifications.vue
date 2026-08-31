@@ -12,7 +12,7 @@
               :disabled="notificationsStore.notifications.length === 0"
               @click="toggleSelectAll"
               :class="[
-                'px-4 py-2 text-sm rounded-lg transition-all font-medium border disabled:opacity-40 disabled:cursor-not-allowed',
+                'px-4 py-2 rounded-lg transition-all font-medium border disabled:opacity-40 disabled:cursor-not-allowed',
                 allSelected
                   ? 'text-pink-700 bg-pink-50 border-pink-200 hover:bg-pink-100'
                   : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-100 disabled:hover:bg-white'
