@@ -5,6 +5,7 @@ export interface LockInfo {
   pid: number;
   timestamp: number;
   hostname?: string;
+  startTime?: number;
 }
 
 export class LockManager {
@@ -39,7 +40,8 @@ export class LockManager {
       const lockInfo: LockInfo = {
         pid: process.pid,
         timestamp: Date.now(),
-        hostname: require('os').hostname()
+        hostname: require('os').hostname(),
+        startTime: this.getProcessStartTime(process.pid) ?? undefined,
       };
 
       // Use 'wx' flag to create file exclusively (fails if exists)
@@ -89,9 +91,29 @@ export class LockManager {
     // A lock is only stale if the owning process is genuinely gone.
     // Age alone is NOT sufficient: a busy-but-alive worker would otherwise have
     // its lock stolen, allowing two workers to run checks simultaneously.
-    const processAlive = this.isProcessAlive(lockInfo.pid);
-
-    if (!processAlive) {
+    //
+    // A plain "is this PID alive" check is unsound inside a container: a
+    // container's PID namespace resets on every restart, so a freshly
+    // restarted worker is *always* PID 1 again - identical to whatever PID
+    // a previous, ungracefully-killed (SIGKILL, e.g. a host/Docker Desktop
+    // restart) instance left behind in the lock file. That process is dead,
+    // but "PID 1 is alive" is trivially true from the new process's own
+    // perspective, so the lock looks permanently active and the worker
+    // crash-loops forever. Comparing the recorded process start time (from
+    // /proc/<pid>/stat) against the current holder of that PID catches this:
+    // a mismatch proves it's a different process even though the PID matches.
+    if (lockInfo.startTime !== undefined) {
+      const currentStartTime = this.getProcessStartTime(lockInfo.pid);
+      if (currentStartTime === null) {
+        console.log(`[LockManager] Process PID ${lockInfo.pid} no longer exists`);
+        return true;
+      }
+      if (currentStartTime !== lockInfo.startTime) {
+        console.log(`[LockManager] PID ${lockInfo.pid} was reused by a different process (start time mismatch) - stale lock`);
+        return true;
+      }
+    } else if (!this.isProcessAlive(lockInfo.pid)) {
+      // Lock file predates the startTime field - fall back to the old check.
       console.log(`[LockManager] Process PID ${lockInfo.pid} no longer exists`);
       return true;
     }
@@ -106,6 +128,27 @@ export class LockManager {
       );
     }
     return false;
+  }
+
+  /**
+   * Reads a process's start time (in clock ticks since boot) from
+   * /proc/<pid>/stat, for detecting PID reuse. Returns null if unavailable
+   * (non-Linux, or no process currently holds that PID).
+   */
+  private getProcessStartTime(pid: number): number | null {
+    try {
+      const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
+      // Field 2 (comm, the executable name) is parenthesized and may itself
+      // contain spaces or parens, so skip past the *last* ')' before doing a
+      // plain space-split on the fixed-format fields that follow.
+      const afterComm = stat.slice(stat.lastIndexOf(')') + 2);
+      const fields = afterComm.split(' ');
+      // starttime is field 22 overall; fields[0] here is field 3 (state), so index 19.
+      const startTime = parseInt(fields[19], 10);
+      return Number.isNaN(startTime) ? null : startTime;
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -9,50 +9,34 @@
           </div>
           <div class="flex items-center gap-2">
             <button
-              v-if="unreadNotifications.length > 0"
-              @click="markAllAsRead"
-              class="px-4 py-2 text-pink-700 bg-white hover:bg-pink-50 rounded-lg transition-all font-medium border border-pink-200"
+              :disabled="notificationsStore.notifications.length === 0"
+              @click="toggleSelectAll"
+              :class="[
+                'px-4 py-2 text-sm rounded-lg transition-all font-medium border disabled:opacity-40 disabled:cursor-not-allowed',
+                allSelected
+                  ? 'text-pink-700 bg-pink-50 border-pink-200 hover:bg-pink-100'
+                  : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-100 disabled:hover:bg-white'
+              ]"
             >
-              Mark All as Read
+              {{ allSelected ? 'Deselect All' : 'Select All' }}
             </button>
             <button
-              v-if="unreadNotifications.length > 0"
-              @click="clearAllNotifications"
-              class="px-4 py-2 text-gray-700 bg-white hover:bg-gray-100 rounded-lg transition-all font-medium border border-gray-200"
+              :disabled="!canMarkAsRead"
+              @click="handleMarkAsRead"
+              class="px-4 py-2 text-pink-700 bg-white hover:bg-pink-50 rounded-lg transition-all font-medium border border-pink-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
-              Clear All
+              {{ selectedIds.length > 0 ? 'Mark Selected as Read' : 'Mark All as Read' }}
+            </button>
+            <button
+              :disabled="!canDelete"
+              @click="handleDelete"
+              class="px-4 py-2 text-gray-700 bg-white hover:bg-red-50 hover:text-red-600 rounded-lg transition-all font-medium border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700"
+            >
+              {{ selectedIds.length > 0 ? 'Delete Selected' : 'Clear All' }}
             </button>
           </div>
         </div>
       </header>
-
-      <div v-if="!loading && notificationsStore.notifications.length > 0" class="flex items-center gap-3 mb-4">
-        <button
-          @click="toggleSelectAll"
-          :class="[
-            'px-3 py-1.5 text-sm rounded-lg transition-all font-medium border',
-            allSelected
-              ? 'text-pink-700 bg-pink-50 border-pink-200 hover:bg-pink-100'
-              : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-100'
-          ]"
-        >
-          {{ allSelected ? 'Deselect All' : 'Select All' }}
-        </button>
-        <button
-          :disabled="selectedIds.length === 0"
-          @click="markSelectedAsRead"
-          class="px-3 py-1.5 text-sm text-pink-700 bg-white hover:bg-pink-50 rounded-lg transition-all font-medium border border-pink-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
-        >
-          Mark Selected as Read
-        </button>
-        <button
-          :disabled="selectedIds.length === 0"
-          @click="deleteSelected"
-          class="px-3 py-1.5 text-sm text-gray-700 bg-white hover:bg-red-50 hover:text-red-600 rounded-lg transition-all font-medium border border-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700"
-        >
-          Delete Selected
-        </button>
-      </div>
 
       <div v-if="!loading && notificationsStore.notifications.length > 0" class="space-y-4">
         <div
@@ -204,6 +188,29 @@ function toggleSelectAll() {
   selectedIds.value = allSelected.value
     ? []
     : notificationsStore.notifications.map(n => n.id);
+}
+
+// The header's Mark as Read / Delete buttons act on the selection when one
+// exists, otherwise on everything - avoids showing both an "All" and a
+// "Selected" variant of the same action side by side.
+const canMarkAsRead = computed(() =>
+  selectedIds.value.length > 0
+    ? notificationsStore.notifications.some(n => selectedIds.value.includes(n.id) && !n.is_read)
+    : unreadNotifications.value.length > 0
+);
+
+const canDelete = computed(() =>
+  selectedIds.value.length > 0 || notificationsStore.notifications.length > 0
+);
+
+async function handleMarkAsRead() {
+  if (selectedIds.value.length > 0) await markSelectedAsRead();
+  else await markAllAsRead();
+}
+
+async function handleDelete() {
+  if (selectedIds.value.length > 0) await deleteSelected();
+  else await clearAllNotifications();
 }
 
 interface NotificationGroup {
